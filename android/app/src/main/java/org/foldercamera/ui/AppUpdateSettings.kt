@@ -100,7 +100,7 @@ internal fun rememberAppUpdate(): AppUpdateUi {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var candidate by remember { mutableStateOf<ApkUpdate?>(null) }
-    var status by remember { mutableStateOf(context.getString(R.string.update_checking)) }
+    var status by remember { mutableIntStateOf(R.string.update_checking) }
     var busy by remember { mutableStateOf(false) }
 
     suspend fun refresh() {
@@ -108,11 +108,11 @@ internal fun rememberAppUpdate(): AppUpdateUi {
         candidate = null
         try {
             candidate = withContext(Dispatchers.IO) { checkUpdate() }
-            status = candidate?.let { context.getString(R.string.update_available, it.tag) } ?: context.getString(R.string.update_none)
+            status = if (candidate != null) R.string.update_available else R.string.update_none
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            status = context.getString(R.string.update_check_failed)
+            status = R.string.update_check_failed
         } finally {
             busy = false
         }
@@ -120,7 +120,7 @@ internal fun rememberAppUpdate(): AppUpdateUi {
 
     LaunchedEffect(Unit) { refresh() }
     return AppUpdateUi(candidate != null) {
-        Text(status)
+        Text(if (status == R.string.update_available) stringResource(status, candidate?.tag.orEmpty()) else stringResource(status))
         Button(enabled = !busy, onClick = { scope.launch { refresh() } }) { Text(stringResource(R.string.update_check)) }
         candidate?.let { update ->
             Button(enabled = !busy, onClick = {
@@ -130,7 +130,7 @@ internal fun rememberAppUpdate(): AppUpdateUi {
                         if (!context.packageManager.canRequestPackageInstalls()) {
                             context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                                 Uri.parse("package:${context.packageName}")))
-                            status = context.getString(R.string.update_allow_install)
+                            status = R.string.update_allow_install
                         } else {
                             val apk = withContext(Dispatchers.IO) { downloadUpdate(context, update) }
                             val uri = FileProvider.getUriForFile(context, "${context.packageName}.updates", apk)
@@ -140,7 +140,7 @@ internal fun rememberAppUpdate(): AppUpdateUi {
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
-                        status = context.getString(R.string.update_install_failed)
+                        status = R.string.update_install_failed
                     } finally {
                         busy = false
                     }
