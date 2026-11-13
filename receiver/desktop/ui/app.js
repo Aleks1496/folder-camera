@@ -208,3 +208,20 @@ $("licenses").onclick = () =>
     $("licenses-text").textContent = await (await fetch("licenses.txt")).text();
     $("licenses-dialog").showModal();
   });
+
+async function checkForUpdate() {
+  if (!api()?.checkForUpdate) return;
+  try {
+    const tag = await api().checkForUpdate();
+    $("download-update").hidden = !tag;
+    $("update-status").textContent = tag
+      ? `Update available: ${tag}. The receiver will restart to install it.`
+      : "No receiver updates available";
+  } catch {
+    $("update-status").textContent = "Could not check for updates";
+  }
+}
+$("check-update").onclick = checkForUpdate;
+$("download-update").onclick = () => action(() => api().downloadUpdate());
+setTimeout(checkForUpdate, 3000);
+setInterval(checkForUpdate, 6 * 60 * 60 * 1000);

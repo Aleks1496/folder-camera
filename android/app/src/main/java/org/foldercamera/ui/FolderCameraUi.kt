@@ -36,6 +36,7 @@ import org.foldercamera.data.Capture
         } catch (_: Exception) { model.error = "storage_permission" }
     }
     MaterialTheme(colorScheme = if (model.screen == "camera") CameraColors else AppColors) {
+        val update = rememberAppUpdate()
         if (model.screen == "camera") {
             CaptureScreen(model, captures, deliveries)
         } else {
@@ -49,12 +50,15 @@ import org.foldercamera.data.Capture
                         }
                         if (model.gate.session != null) IconButton(onClick = model::back) { GlyphIcon(Glyph.CAMERA, description = stringResource(R.string.return_camera)) }
                     }
+                    if (update.available && model.screen != "settings") {
+                        TextButton(onClick = { model.screen = "settings" }) { Text("App update available") }
+                    }
                     model.error?.let { ErrorBanner(errorText(it)) { model.error = null } }
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         when (model.screen) {
                             "destination" -> DestinationScreen(model, captures) { picker.launch(model.root?.let(Uri::parse)) }
                             "browser" -> BrowserScreen(model.root, captures)
-                            "settings" -> Box(Modifier.padding(horizontal = 20.dp)) { SettingsScreen(model, deliveries, captures) { picker.launch(model.root?.let(Uri::parse)) } }
+                            "settings" -> Box(Modifier.padding(horizontal = 20.dp)) { SettingsScreen(model, deliveries, captures, update.content) { picker.launch(model.root?.let(Uri::parse)) } }
                             "scanner" -> Column(Modifier.padding(20.dp)) { QrScreen(model) }
                         }
                     }

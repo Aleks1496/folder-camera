@@ -24,7 +24,7 @@ import org.foldercamera.data.*
 import org.foldercamera.sync.*
 import org.json.JSONObject
 
-@Composable fun SettingsScreen(model: CameraModel, deliveries: List<Delivery>, captures: List<Capture>, pickRoot: () -> Unit) {
+@Composable fun SettingsScreen(model: CameraModel, deliveries: List<Delivery>, captures: List<Capture>, updateContent: @Composable () -> Unit, pickRoot: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var recoverySource by remember { mutableStateOf<java.io.File?>(null) }
@@ -66,6 +66,7 @@ import org.json.JSONObject
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+        updateContent()
         SectionCard(stringResource(R.string.storage_heading), Glyph.FOLDER) {
         Text(model.rootName ?: model.root?.let(::treeLabel) ?: stringResource(R.string.no_root), style = MaterialTheme.typography.titleSmall)
         Text(stringResource(R.string.storage_short_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

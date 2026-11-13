@@ -33,6 +33,8 @@ jobs:
       - run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
       - run: ./gradlew :app:testDebugUnitTest :app:lintDebug --no-daemon --max-workers=4
       - name: Build a test APK for a branch or manual run
+        env:
+          FOLDER_CAMERA_BUILD_NUMBER: ${{ github.run_number }}
         if: github.event_name == 'workflow_dispatch' || github.ref_type == 'branch'
         run: |
           ./gradlew :app:assembleDebug --no-daemon --max-workers=4
@@ -40,6 +42,7 @@ jobs:
       - name: Build and verify signed APK
         if: github.event_name == 'push' && github.ref_type == 'tag'
         env:
+          FOLDER_CAMERA_RELEASE_TAG: ${{ github.ref_name }}
           KEYSTORE_BASE64: ${{ secrets.FOLDER_CAMERA_KEYSTORE_BASE64 }}
           FOLDER_CAMERA_STORE_PASSWORD: ${{ secrets.FOLDER_CAMERA_STORE_PASSWORD }}
           FOLDER_CAMERA_KEY_ALIAS: ${{ secrets.FOLDER_CAMERA_KEY_ALIAS }}
@@ -84,6 +87,8 @@ jobs:
       - working-directory: receiver
         run: deno task test
       - name: Build and validate portable Windows x64 EXE
+        env:
+          FOLDER_CAMERA_UPDATE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('folder-camera-build-{0}', github.run_number) }}
         run: |
           python scripts/build_desktop.py --target x86_64-pc-windows-msvc --output .work/native
           if errorlevel 1 exit /b 1

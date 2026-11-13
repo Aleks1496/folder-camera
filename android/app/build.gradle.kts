@@ -3,6 +3,11 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
+val releaseTag = providers.environmentVariable("FOLDER_CAMERA_RELEASE_TAG").orNull
+val releaseVersion = releaseTag?.let {
+    require(it.matches(Regex("folder-camera-v[0-9]+\\.[0-9]+\\.[0-9]+"))) { "Invalid Android release tag" }
+    it.removePrefix("folder-camera-v")
+}
 android {
     namespace = "org.foldercamera"
     compileSdk = 37
@@ -10,8 +15,12 @@ android {
         applicationId = "io.github.sigmasd.foldercamera"
         minSdk = 26
         targetSdk = 37
-        versionCode = 8
-        versionName = "1.0.4"
+        versionCode = providers.environmentVariable("FOLDER_CAMERA_BUILD_NUMBER").orNull
+            ?.toIntOrNull()?.plus(1000) ?: releaseVersion?.split('.')?.map(String::toInt)?.let { (major, minor, patch) ->
+                require(major in 0..2098 && minor in 0..999 && patch in 0..999)
+                1000 + major * 1_000_000 + minor * 1000 + patch
+            } ?: 9
+        versionName = releaseVersion ?: "1.0.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true; buildConfig = true }
@@ -28,8 +37,14 @@ android {
         }
     }
     buildTypes {
-        debug { applicationIdSuffix = ".debug"; versionNameSuffix = "-dev" }
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-dev"
+            val build = providers.environmentVariable("FOLDER_CAMERA_BUILD_NUMBER").orNull?.toIntOrNull() ?: 0
+            buildConfigField("int", "UPDATE_BUILD", build.toString())
+        }
         release {
+            buildConfigField("int", "UPDATE_BUILD", "0")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))

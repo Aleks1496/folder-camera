@@ -1,8 +1,10 @@
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { Receiver } from "../src/receiver.ts";
 import { stateDirectory } from "../src/state-directory.ts";
 import { durableJson, readJson } from "../src/files.ts";
+import { updateTag } from "./build-version.ts";
+import { availableUpdate, downloadUpdate } from "./updates.ts";
 import * as system from "./system.ts";
 import { controlArrival, controlDevice, controlHandler } from "./control.ts";
 interface NativeWindow extends EventTarget {
@@ -236,6 +238,73 @@ async function boot() {
     }
   }
 }
+let desktopUpdate: Awaited<ReturnType<typeof availableUpdate>> = null;
+bind("checkForUpdate", async () => {
+  desktopUpdate = Deno.build.os === "windows" && updateTag
+    ? await availableUpdate(updateTag)
+    : null;
+  return desktopUpdate?.tag ?? null;
+});
+bind("downloadUpdate", async () => {
+  if (!desktopUpdate || Deno.build.os !== "windows") return;
+  const executable = Deno.execPath();
+  const directory = dirname(executable);
+  const name = basename(executable);
+  if (!name.toLowerCase().endsWith(".exe")) throw new Error("Unsupported receiver installation");
+  for (const file of [".deno-desktop-app", "native.dll"]) await Deno.stat(join(directory, file));
+
+  const staging = await Deno.makeTempDir({ dir: directory, prefix: ".folder-camera-update-" });
+  try {
+    await Deno.writeFile(join(staging, "update.zip"), await downloadUpdate(desktopUpdate));
+    const script = [
+      "$ErrorActionPreference = 'Stop'",
+      "$stage = $env:FC_UPDATE_STAGE",
+      "$root = $env:FC_UPDATE_ROOT",
+      "$archive = Join-Path $stage 'update.zip'",
+      "$new = Join-Path $stage 'new'",
+      "$backup = Join-Path $stage 'backup'",
+      "$oldExe = $env:FC_UPDATE_EXE",
+      "Start-Transcript -LiteralPath (Join-Path $stage 'install.log') | Out-Null",
+      "Add-Type -AssemblyName System.IO.Compression.FileSystem",
+      "[IO.Compression.ZipFile]::ExtractToDirectory($archive, $new)",
+      "$launchers = @(Get-ChildItem -LiteralPath $new -File -Filter '*.exe')",
+      "if ($launchers.Count -ne 1) { throw 'Expected one Windows launcher' }",
+      "$map = [ordered]@{'native.dll'='native.dll'; '.deno-desktop-app'='.deno-desktop-app'}",
+      "$map[$oldExe] = $launchers[0].Name",
+      "foreach ($file in $map.Keys) { if (!(Test-Path -LiteralPath (Join-Path $new $map[$file]) -PathType Leaf)) { throw ('Missing ' + $map[$file]) } }",
+      "New-Item -ItemType Directory -Path $backup | Out-Null",
+      "foreach ($file in $map.Keys) { Copy-Item -LiteralPath (Join-Path $root $file) -Destination (Join-Path $backup $file) -Force }",
+      "Wait-Process -Id ([int]$env:FC_UPDATE_PID) -Timeout 15 -ErrorAction SilentlyContinue; if (Get-Process -Id ([int]$env:FC_UPDATE_PID) -ErrorAction SilentlyContinue) { throw 'Receiver did not exit' }",
+      "try {",
+      "  foreach ($file in $map.Keys) { Copy-Item -LiteralPath (Join-Path $new $map[$file]) -Destination (Join-Path $root $file) -Force }",
+      "  Start-Process -FilePath (Join-Path $root $oldExe) -WorkingDirectory $root",
+      "} catch {",
+      "  foreach ($file in $map.Keys) { Copy-Item -LiteralPath (Join-Path $backup $file) -Destination (Join-Path $root $file) -Force }",
+      "  Start-Process -FilePath (Join-Path $root $oldExe) -WorkingDirectory $root",
+      "  throw",
+      "}",
+      "Stop-Transcript | Out-Null",
+      "Remove-Item -LiteralPath $stage -Recurse -Force",
+    ].join("\n");
+    const child = new Deno.Command("powershell.exe", {
+      args: ["-NoProfile", "-NonInteractive", "-Command", script],
+      env: {
+        FC_UPDATE_STAGE: staging,
+        FC_UPDATE_ROOT: directory,
+        FC_UPDATE_EXE: name,
+        FC_UPDATE_PID: String(Deno.pid),
+      },
+      stdin: "null",
+      stdout: "null",
+      stderr: "null",
+    }).spawn();
+    child.unref();
+  } catch (error) {
+    await Deno.remove(staging, { recursive: true }).catch(() => {});
+    throw error;
+  }
+  await quit();
+});
 bind("snapshot", snapshot);
 bind("start", async () => {
   if (!initialized) throw new Error(startupError ?? "Receiver is starting");

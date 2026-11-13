@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Build a self-contained receiver package using the locked Deno desktop runtime."""
 import argparse
+import json
+import re
 import os
 from pathlib import Path
 import subprocess
@@ -25,6 +27,13 @@ work_tmp = ROOT/'.work/tmp'; work_tmp.mkdir(parents=True,exist_ok=True)
 environment={**os.environ,'TMPDIR':str(work_tmp)}
 commands = 'powershell.exe,explorer.exe,reg.exe' if 'windows' in a.target else 'osascript,open' if 'apple' in a.target else 'zenity,kdialog,xdg-open'
 command=[DENO,'desktop','--config',str(ROOT/'receiver/deno.json'),'--frozen','--backend',a.backend,'--target',a.target,'--output',str(output),'--include',str(ROOT/'receiver/desktop/ui'),'--icon',str(ROOT/'receiver/desktop/ui/icon.png'),'--allow-env=HOME,XDG_STATE_HOME,XDG_CONFIG_HOME,LOCALAPPDATA,APPDATA,APPIMAGE,SystemRoot,DENO_SERVE_ADDRESS','--allow-sys=networkInterfaces,homedir','--allow-net','--allow-read','--allow-write','--allow-ffi','--allow-run='+commands,str(ROOT/'receiver/desktop/main.ts')]
+# A compiled module records the release identifier inside the executable.
+tag = os.environ.get('FOLDER_CAMERA_UPDATE_TAG', '')
+if tag and not re.fullmatch(r'folder-camera-(?:build-[1-9][0-9]*|v[0-9]+\.[0-9]+\.[0-9]+)', tag):
+    raise SystemExit('Invalid desktop update tag')
+(ROOT/'receiver/desktop/build-version.ts').write_text(
+    'export const updateTag = ' + json.dumps(tag) + ';\n', encoding='utf-8'
+)
 for attempt in range(3):
     result=subprocess.run(command,env=environment,cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
     print(result.stdout,end='')
