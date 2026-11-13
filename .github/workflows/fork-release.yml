@@ -1,0 +1,122 @@
+name: Folder Camera APK and Windows release
+on:
+  workflow_dispatch:
+  push:
+    tags: ['folder-camera-v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: folder-camera-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  android:
+    if: github.repository == 'Aleks1496/folder-camera'
+    runs-on: [self-hosted, linux, folder-camera]
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+        working-directory: android
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd
+      - run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
+      - run: ./gradlew :app:testDebugUnitTest :app:lintDebug --no-daemon --max-workers=4
+      - name: Build a test APK for a manual run
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          ./gradlew :app:assembleDebug --no-daemon --max-workers=4
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/folder-camera-test.apk"
+      - name: Build and verify signed APK
+        if: github.event_name == 'push'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.FOLDER_CAMERA_KEYSTORE_BASE64 }}
+          FOLDER_CAMERA_STORE_PASSWORD: ${{ secrets.FOLDER_CAMERA_STORE_PASSWORD }}
+          FOLDER_CAMERA_KEY_ALIAS: ${{ secrets.FOLDER_CAMERA_KEY_ALIAS }}
+          FOLDER_CAMERA_KEY_PASSWORD: ${{ secrets.FOLDER_CAMERA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          [[ -n "$KEYSTORE_BASE64" && -n "$FOLDER_CAMERA_STORE_PASSWORD" &&
+             -n "$FOLDER_CAMERA_KEY_ALIAS" && -n "$FOLDER_CAMERA_KEY_PASSWORD" ]] ||
+            { echo "::error::Configure the four FOLDER_CAMERA signing secrets"; exit 1; }
+          export FOLDER_CAMERA_KEYSTORE
+          FOLDER_CAMERA_KEYSTORE=$(mktemp "$RUNNER_TEMP/folder-camera.XXXXXX")
+          trap 'rm -f "$FOLDER_CAMERA_KEYSTORE"' EXIT
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$FOLDER_CAMERA_KEYSTORE"
+          unset KEYSTORE_BASE64
+          ./gradlew :app:assembleRelease --no-daemon --max-workers=4
+          apk=app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$apk"
+          cp "$apk" "$RUNNER_TEMP/folder-camera-android.apk"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: folder-camera-android
+          path: ${{ runner.temp }}/${{ github.event_name == 'push' && 'folder-camera-android.apk' || 'folder-camera-test.apk' }}
+          if-no-files-found: error
+
+  windows:
+    if: github.repository == 'Aleks1496/folder-camera'
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
+        with:
+          deno-version: v2.9.7
+      - working-directory: receiver
+        run: deno task test
+      - name: Build and test portable Windows EXE
+        run: |
+          python scripts/build_desktop.py --target x86_64-pc-windows-msvc --output .work/native
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $launchers = @(Get-ChildItem .work/native -File -Filter '*.exe')
+          if ($launchers.Count -ne 1) { throw 'Expected one native receiver executable' }
+          $out = Join-Path $env:RUNNER_TEMP ([guid]::NewGuid().ToString())
+          New-Item -ItemType Directory -Path $out | Out-Null
+          $exe = Join-Path $out 'folder-camera-receiver-windows-x64.exe'
+          Copy-Item $launchers[0].FullName $exe
+          python scripts/smoke_desktop.py $exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force -Path .work/artifacts | Out-Null
+          Copy-Item $exe .work/artifacts/
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: folder-camera-windows-x64
+          path: .work/artifacts/*.exe
+          if-no-files-found: error
+
+  publish:
+    if: github.repository == 'Aleks1496/folder-camera' && github.event_name == 'push'
+    needs: [android, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: folder-camera-*
+          path: dist
+          merge-multiple: true
+      - name: Publish APK, Windows EXE and checksums
+        working-directory: dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          files=(folder-camera-android.apk folder-camera-receiver-windows-x64.exe)
+          sha256sum "${files[@]}" > SHA256SUMS
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --generate-notes
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" "${files[@]}" SHA256SUMS
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
