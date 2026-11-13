@@ -101,9 +101,29 @@ jobs:
           path: .work/artifacts/*.exe
           if-no-files-found: error
 
+  windows_gui:
+    name: Windows GUI smoke test
+    if: github.repository == 'Aleks1496/folder-camera'
+    needs: windows
+    runs-on: [self-hosted, windows, x64, folder-camera-windows-gui]
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: folder-camera-windows-x64
+          path: .work/gui-artifact
+      - name: Open the built receiver and verify readiness
+        run: python scripts/smoke_desktop.py ".work/gui-artifact/folder-camera-receiver-windows-x64.exe"
+
   publish:
     if: github.repository == 'Aleks1496/folder-camera' && github.event_name == 'push' && github.ref_type == 'tag'
-    needs: [android, windows]
+    needs: [android, windows_gui]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
