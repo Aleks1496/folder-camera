@@ -3,6 +3,8 @@ on:
   workflow_dispatch:
   push:
     tags: ['folder-camera-v*']
+    branches: [master]
+    paths: ['.github/workflows/fork-release.yml']
 
 permissions:
   contents: read
@@ -32,12 +34,12 @@ jobs:
       - run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
       - run: ./gradlew :app:testDebugUnitTest :app:lintDebug --no-daemon --max-workers=4
       - name: Build a test APK for a manual run
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || github.ref_type == 'branch'
         run: |
           ./gradlew :app:assembleDebug --no-daemon --max-workers=4
           cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/folder-camera-test.apk"
       - name: Build and verify signed APK
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         env:
           KEYSTORE_BASE64: ${{ secrets.FOLDER_CAMERA_KEYSTORE_BASE64 }}
           FOLDER_CAMERA_STORE_PASSWORD: ${{ secrets.FOLDER_CAMERA_STORE_PASSWORD }}
@@ -60,7 +62,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: folder-camera-android
-          path: ${{ runner.temp }}/${{ github.event_name == 'push' && 'folder-camera-android.apk' || 'folder-camera-test.apk' }}
+          path: ${{ runner.temp }}/${{ github.event_name == 'push' && github.ref_type == 'tag' && 'folder-camera-android.apk' || 'folder-camera-test.apk' }}
           if-no-files-found: error
 
   windows:
@@ -97,7 +99,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    if: github.repository == 'Aleks1496/folder-camera' && github.event_name == 'push'
+    if: github.repository == 'Aleks1496/folder-camera' && github.event_name == 'push' && github.ref_type == 'tag'
     needs: [android, windows]
     runs-on: ubuntu-24.04
     permissions:
