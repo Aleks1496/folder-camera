@@ -163,4 +163,11 @@
     <string name="update_allow_install">Разрешите установку из Folder Camera, затем снова нажмите «Установить обновление»</string>
     <string name="update_install_failed">Не удалось подготовить обновление</string>
     <string name="update_install">Установить обновление</string>
+    <string name="crop_title">Обрезать фото</string>
+    <string name="crop_help">Перетащите углы рамки или сдвиньте её целиком.</string>
+    <string name="crop_reset">Сбросить рамку</string>
+    <string name="crop_save">Сохранить</string>
+    <string name="crop_open_failed">Не удалось открыть снимок.</string>
+    <string name="crop_save_failed">Не удалось подготовить снимок к сохранению. Попробуйте ещё раз.</string>
+    <string name="crop_image">Снимок для обрезки</string>
 </resources>

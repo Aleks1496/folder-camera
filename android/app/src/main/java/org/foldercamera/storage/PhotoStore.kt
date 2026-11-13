@@ -27,12 +27,38 @@ fun digest(input: InputStream): Pair<Long, String> {
 class PhotoStore(private val context: Context, private val dao: CameraDao) : PhotoStorage {
     private val mutex = Mutex()
     private val activeCaptures = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-    suspend fun begin(root: String, path: String, receiverId: String?): Capture = withContext(Dispatchers.IO) {
+    private val draftDirectory by lazy {
+        File(context.filesDir, "capture-drafts").apply {
+            deleteRecursively()
+            check(mkdirs())
+        }
+    }
+
+    suspend fun newDraft(): File = withContext(Dispatchers.IO) {
+        File.createTempFile("capture-", ".jpg", draftDirectory)
+    }
+
+    suspend fun begin(root: String, path: String, receiverId: String?, approved: File? = null): Capture = withContext(Dispatchers.IO) {
         require(PortablePath.validate(path) == null)
         val id = UUID.randomUUID().toString(); val now = System.currentTimeMillis()
         val filename = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.ROOT).format(Date(now)) + "_" + id.replace("-", "") + ".jpg"
         val staging = File(context.filesDir, "staging").apply { mkdirs() }
-        Capture(id, filename, now, path, root, stagingPath = File(staging, "$id.jpg").path, receiverId = receiverId).also { dao.insert(it); activeCaptures.add(it.photoId) }
+        val stage = File(staging, "$id.jpg")
+        val capture = Capture(id, filename, now, path, root, stagingPath = stage.path, receiverId = receiverId)
+        activeCaptures.add(id)
+        try {
+            if (approved != null) {
+                check(validJpeg(approved))
+                // Keep the editor's original available until the journal entry is committed.
+                approved.copyTo(stage)
+            }
+            dao.insert(capture)
+            capture
+        } catch (failure: Exception) {
+            stage.delete()
+            activeCaptures.remove(id)
+            throw failure
+        }
     }
     override suspend fun persist(id: String) = withContext(Dispatchers.IO) { mutex.withLock {
         activeCaptures.remove(id)

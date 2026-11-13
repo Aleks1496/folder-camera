@@ -37,7 +37,10 @@ import org.foldercamera.data.Capture
     }
     MaterialTheme(colorScheme = if (model.screen == "camera") CameraColors else AppColors) {
         val update = rememberAppUpdate()
-        if (model.screen == "camera") {
+        val draft = model.draft
+        if (draft != null) {
+            PhotoCropScreen(draft.file, model.busy, model.cropSaveFailed, model::discardDraft, model::saveDraft)
+        } else if (model.screen == "camera") {
             CaptureScreen(model, captures, deliveries)
         } else {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {

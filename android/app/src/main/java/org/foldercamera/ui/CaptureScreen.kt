@@ -71,8 +71,8 @@ import kotlinx.coroutines.launch
     Surface(Modifier.fillMaxSize(), color = CameraColors.background) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { model.path = session.path; model.screen = "destination" }) { GlyphIcon(Glyph.BACK, description = stringResource(R.string.change_folder)) }
-                Column(Modifier.weight(1f).clickable { fullPath = true }.padding(horizontal = 6.dp)) {
+                IconButton(enabled = !model.busy, onClick = { model.path = session.path; model.screen = "destination" }) { GlyphIcon(Glyph.BACK, description = stringResource(R.string.change_folder)) }
+                Column(Modifier.weight(1f).clickable(enabled = !model.busy) { fullPath = true }.padding(horizontal = 6.dp)) {
                     Text(stringResource(R.string.current_folder), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     Text(session.path, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
@@ -110,13 +110,13 @@ import kotlinx.coroutines.launch
                 Slider(value = model.zoomRatio.coerceIn(minZoom, maxZoom), onValueChange = { model.zoomRatio = it }, valueRange = minZoom..maxZoom, modifier = Modifier.weight(1f).semantics { contentDescription = zoomLabel })
             }
             Row(Modifier.fillMaxWidth().padding(horizontal = 30.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Box(Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(CameraColors.surfaceVariant).clickable(enabled = latest != null) { model.screen = "browser" }.semantics { contentDescription = thumbnailLabel }, contentAlignment = Alignment.Center) {
+                Box(Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(CameraColors.surfaceVariant).clickable(enabled = latest != null && !model.busy) { model.screen = "browser" }.semantics { contentDescription = thumbnailLabel }, contentAlignment = Alignment.Center) {
                     if (latest != null) PhotoImage(latest.destinationDocumentUri, Modifier.fillMaxSize()) else GlyphIcon(Glyph.PHOTO, tint = CameraColors.onSurfaceVariant)
                 }
                 Box(Modifier.size(78.dp).scale(shutterScale.value).border(3.dp, if (handle != null && !model.busy) Color.White else CameraColors.onSurfaceVariant, CircleShape).padding(7.dp).clip(CircleShape).background(if (model.busy) CameraColors.primary else Color.White).clickable(enabled = handle != null && !model.busy) { handle?.let { h -> model.capture { file, done -> takePhoto(context, h.capture, file, done, onShutter = { shutterEvent++ }) } } }.semantics { contentDescription = shutterLabel }, contentAlignment = Alignment.Center) {
                     if (model.busy) CircularProgressIndicator(Modifier.size(24.dp), color = CameraColors.onPrimary, strokeWidth = 2.dp)
                 }
-                IconButton(onClick = { model.screen = "settings" }, modifier = Modifier.size(52.dp)) { GlyphIcon(Glyph.SETTINGS, description = stringResource(R.string.settings)) }
+                IconButton(enabled = !model.busy, onClick = { model.screen = "settings" }, modifier = Modifier.size(52.dp)) { GlyphIcon(Glyph.SETTINGS, description = stringResource(R.string.settings)) }
             }
             Column(Modifier.fillMaxWidth().height(statusHeight).padding(horizontal = 22.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 if (savingCount > 0) Text(stringResource(R.string.saving_short, savingCount), style = MaterialTheme.typography.labelSmall, color = CameraColors.onSurfaceVariant)
