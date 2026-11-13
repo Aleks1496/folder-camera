@@ -81,7 +81,7 @@ import org.json.JSONObject
         SectionCard(stringResource(R.string.sync_heading), Glyph.REFRESH) {
         Text(stringResource(R.string.sync_short_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedButton(onClick = {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://sigmasd.github.io/folder-camera/#desktop-downloads")))
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Aleks1496/folder-camera/releases")))
         }, modifier = Modifier.fillMaxWidth(), shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp)) {
             Text(stringResource(R.string.get_desktop_receiver))
         }

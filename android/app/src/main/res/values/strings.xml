@@ -130,8 +130,8 @@
     <string name="storage_short_help">Новые снимки сохраняются в этой папке. Прежние снимки остаются на своих местах.</string>
     <string name="pair_short_help">Отсканируйте одноразовый QR-код на экране приёмника.</string>
     <string name="sync_short_help">Отправляйте копии на подключённый ПК. Оригиналы остаются на телефоне.</string>
-    <string name="get_desktop_receiver">Скачать приёмник для ПК</string>
-    <string name="desktop_receiver_help">Доступен бесплатно для Windows, macOS и Linux. Установите его на компьютер, затем отсканируйте код подключения.</string>
+    <string name="get_desktop_receiver">Скачать приёмник для Windows</string>
+    <string name="desktop_receiver_help">В разделе Assets скачайте folder-camera-receiver-windows-x64.zip и распакуйте архив на компьютере. Запустите приёмник и отсканируйте QR-код подключения.</string>
     <string name="about">О Folder Camera</string>
     <string name="privacy_policy">Политика конфиденциальности</string>
     <string name="open_source_license">Лицензия GPL-3.0-or-later</string>
