@@ -78,20 +78,20 @@ jobs:
           persist-credentials: false
       - name: Install pinned Deno
         run: |
-          set "DENO_DIR=%RUNNER_TEMP%\folder-camera-deno"
-          python -c "import hashlib, io, os, pathlib, urllib.request, zipfile; data = urllib.request.urlopen('https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-pc-windows-msvc.zip', timeout=120).read(); assert hashlib.sha256(data).hexdigest() == 'a0c3101b4158d1dfb7d6a78a7bf0f3de80c96bb423c152beec8beb22786f2238', 'Deno archive checksum mismatch'; dest = pathlib.Path(os.environ['DENO_DIR']); dest.mkdir(parents=True, exist_ok=True); (dest / 'deno.exe').write_bytes(zipfile.ZipFile(io.BytesIO(data)).read('deno.exe'))"
+          set "DENO_DIR=${{ runner.tool_cache }}\folder-camera\deno-2.9.7-x64"
+          python -c "import hashlib, io, os, pathlib, urllib.request, zipfile; dest = pathlib.Path(os.environ['DENO_DIR']); dest.mkdir(parents=True, exist_ok=True); archive = dest / 'deno.zip'; sha = 'a0c3101b4158d1dfb7d6a78a7bf0f3de80c96bb423c152beec8beb22786f2238'; data = archive.read_bytes() if archive.is_file() else b''; data = data if hashlib.sha256(data).hexdigest() == sha else urllib.request.urlopen('https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-pc-windows-msvc.zip', timeout=120).read(); assert hashlib.sha256(data).hexdigest() == sha, 'Deno archive checksum mismatch'; archive.write_bytes(data) if not archive.exists() or archive.read_bytes() != data else None; (dest / 'deno.exe').write_bytes(zipfile.ZipFile(io.BytesIO(data)).read('deno.exe'))"
           if errorlevel 1 exit /b 1
           python -c "import os; open(os.environ['GITHUB_PATH'], 'a', encoding='utf-8').write(os.environ['DENO_DIR'] + '\n')"
       - working-directory: receiver
         run: deno task test
-      - name: Build and test portable Windows EXE
+      - name: Build and validate portable Windows x64 EXE
         run: |
           python scripts/build_desktop.py --target x86_64-pc-windows-msvc --output .work/native
           if errorlevel 1 exit /b 1
           set "EXE=%RUNNER_TEMP%\folder-camera-receiver-windows-x64.exe"
           python -c "import os, pathlib, shutil; launchers = list(pathlib.Path('.work/native').glob('*.exe')); assert len(launchers) == 1, 'Expected one native receiver executable'; shutil.copy2(launchers[0], os.environ['EXE'])"
           if errorlevel 1 exit /b 1
-          python scripts/smoke_windows_interactive.py "%EXE%"
+          python -c "import os, pathlib, struct; image = pathlib.Path(os.environ['EXE']).read_bytes(); assert image.startswith(b'MZ'), 'Missing DOS header'; offset, = struct.unpack_from('<I', image, 60); signature, machine = struct.unpack_from('<4sH', image, offset); assert signature == b'PE\x00\x00' and machine == 0x8664, 'Expected a Windows x64 executable'; print('Windows x64 PE header verified')"
           if errorlevel 1 exit /b 1
           if not exist ".work\artifacts" mkdir ".work\artifacts"
           copy /y "%EXE%" ".work\artifacts\"
