@@ -91,7 +91,7 @@ jobs:
           set "EXE=%RUNNER_TEMP%\folder-camera-receiver-windows-x64.exe"
           python -c "import os, pathlib, shutil; launchers = list(pathlib.Path('.work/native').glob('*.exe')); assert len(launchers) == 1, 'Expected one native receiver executable'; shutil.copy2(launchers[0], os.environ['EXE'])"
           if errorlevel 1 exit /b 1
-          python scripts/smoke_desktop.py "%EXE%"
+          python scripts/smoke_windows_interactive.py "%EXE%"
           if errorlevel 1 exit /b 1
           if not exist ".work\artifacts" mkdir ".work\artifacts"
           copy /y "%EXE%" ".work\artifacts\"
