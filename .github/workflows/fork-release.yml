@@ -88,17 +88,16 @@ jobs:
         run: |
           python scripts/build_desktop.py --target x86_64-pc-windows-msvc --output .work/native
           if errorlevel 1 exit /b 1
-          set "EXE=%RUNNER_TEMP%\folder-camera-receiver-windows-x64.exe"
-          python -c "import os, pathlib, shutil; launchers = list(pathlib.Path('.work/native').glob('*.exe')); assert len(launchers) == 1, 'Expected one native receiver executable'; shutil.copy2(launchers[0], os.environ['EXE'])"
+          set "EXE=.work\native\folder-camera-receiver-windows-x64.exe"
+          python -c "import os, pathlib; launchers = list(pathlib.Path('.work/native').glob('*.exe')); assert len(launchers) == 1, 'Expected one native receiver executable'; launchers[0].rename(os.environ['EXE'])"
           if errorlevel 1 exit /b 1
           python -c "import os, pathlib, struct; image = pathlib.Path(os.environ['EXE']).read_bytes(); assert image.startswith(b'MZ'), 'Missing DOS header'; offset, = struct.unpack_from('<I', image, 60); signature, machine = struct.unpack_from('<4sH', image, offset); assert signature == b'PE\x00\x00' and machine == 0x8664, 'Expected a Windows x64 executable'; print('Windows x64 PE header verified')"
           if errorlevel 1 exit /b 1
-          if not exist ".work\artifacts" mkdir ".work\artifacts"
-          copy /y "%EXE%" ".work\artifacts\"
+          python -c "import pathlib, shutil; out = pathlib.Path('.work/artifacts'); out.mkdir(exist_ok=True); shutil.make_archive(str(out / 'folder-camera-receiver-windows-x64'), 'zip', '.work/native')"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: folder-camera-windows-x64
-          path: .work/artifacts/*.exe
+          path: .work/artifacts/folder-camera-receiver-windows-x64.zip
           if-no-files-found: error
 
   windows_gui:
@@ -119,7 +118,10 @@ jobs:
           name: folder-camera-windows-x64
           path: .work/gui-artifact
       - name: Open the built receiver and verify readiness
-        run: python scripts/smoke_desktop.py ".work/gui-artifact/folder-camera-receiver-windows-x64.exe"
+        run: |
+          python -m zipfile -e ".work/gui-artifact/folder-camera-receiver-windows-x64.zip" ".work/gui-runtime"
+          if errorlevel 1 exit /b 1
+          python scripts/smoke_desktop.py ".work/gui-runtime/folder-camera-receiver-windows-x64.exe"
 
   publish:
     if: github.repository == 'Aleks1496/folder-camera' && github.event_name == 'push' && github.ref_type == 'tag'
@@ -133,14 +135,14 @@ jobs:
           pattern: folder-camera-*
           path: dist
           merge-multiple: true
-      - name: Publish APK, Windows EXE and checksums
+      - name: Publish APK, portable Windows ZIP and checksums
         working-directory: dist
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          files=(folder-camera-android.apk folder-camera-receiver-windows-x64.exe)
+          files=(folder-camera-android.apk folder-camera-receiver-windows-x64.zip)
           sha256sum "${files[@]}" > SHA256SUMS
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --generate-notes
           gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" "${files[@]}" SHA256SUMS
