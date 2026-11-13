@@ -51,7 +51,7 @@ import org.foldercamera.data.Capture
                         if (model.gate.session != null) IconButton(onClick = model::back) { GlyphIcon(Glyph.CAMERA, description = stringResource(R.string.return_camera)) }
                     }
                     if (update.available && model.screen != "settings") {
-                        TextButton(onClick = { model.screen = "settings" }) { Text("App update available") }
+                        TextButton(onClick = { model.screen = "settings" }) { Text(stringResource(R.string.update_available_short)) }
                     }
                     model.error?.let { ErrorBanner(errorText(it)) { model.error = null } }
                     Box(Modifier.weight(1f).fillMaxWidth()) {

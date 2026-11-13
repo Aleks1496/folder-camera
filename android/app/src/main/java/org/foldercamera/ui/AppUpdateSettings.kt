@@ -8,6 +8,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +17,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.foldercamera.BuildConfig
+import org.foldercamera.R
 import org.json.JSONArray
 import java.io.File
 import java.security.MessageDigest
@@ -98,7 +100,7 @@ internal fun rememberAppUpdate(): AppUpdateUi {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var candidate by remember { mutableStateOf<ApkUpdate?>(null) }
-    var status by remember { mutableStateOf("Checking for app updates…") }
+    var status by remember { mutableStateOf(context.getString(R.string.update_checking)) }
     var busy by remember { mutableStateOf(false) }
 
     suspend fun refresh() {
@@ -106,11 +108,11 @@ internal fun rememberAppUpdate(): AppUpdateUi {
         candidate = null
         try {
             candidate = withContext(Dispatchers.IO) { checkUpdate() }
-            status = candidate?.let { "Update available: ${it.tag}" } ?: "No app updates available"
+            status = candidate?.let { context.getString(R.string.update_available, it.tag) } ?: context.getString(R.string.update_none)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
-            status = "Could not check for updates"
+            status = context.getString(R.string.update_check_failed)
         } finally {
             busy = false
         }
@@ -119,7 +121,7 @@ internal fun rememberAppUpdate(): AppUpdateUi {
     LaunchedEffect(Unit) { refresh() }
     return AppUpdateUi(candidate != null) {
         Text(status)
-        Button(enabled = !busy, onClick = { scope.launch { refresh() } }) { Text("Check for updates") }
+        Button(enabled = !busy, onClick = { scope.launch { refresh() } }) { Text(stringResource(R.string.update_check)) }
         candidate?.let { update ->
             Button(enabled = !busy, onClick = {
                 scope.launch {
@@ -128,7 +130,7 @@ internal fun rememberAppUpdate(): AppUpdateUi {
                         if (!context.packageManager.canRequestPackageInstalls()) {
                             context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                                 Uri.parse("package:${context.packageName}")))
-                            status = "Allow installs from Folder Camera, then tap Install update again"
+                            status = context.getString(R.string.update_allow_install)
                         } else {
                             val apk = withContext(Dispatchers.IO) { downloadUpdate(context, update) }
                             val uri = FileProvider.getUriForFile(context, "${context.packageName}.updates", apk)
@@ -138,12 +140,12 @@ internal fun rememberAppUpdate(): AppUpdateUi {
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
-                        status = "Could not prepare the update"
+                        status = context.getString(R.string.update_install_failed)
                     } finally {
                         busy = false
                     }
                 }
-            }) { Text("Install update") }
+            }) { Text(stringResource(R.string.update_install)) }
         }
     }
 }

@@ -59,7 +59,7 @@ const uiServer = Deno.serve({ onListen() {} }, async (request) => {
 // Headless runs the receiver with no window and no tray; other apps use the loopback control API.
 const headless = Deno.args.includes("--headless");
 const window = headless ? undefined : new native.BrowserWindow({
-  title: "Folder Camera Receiver",
+  title: "Приёмник Folder Camera",
   width: 1100,
   height: 840,
 });
@@ -215,7 +215,7 @@ async function boot() {
             initialized ? receiver.snapshot().recent.map(controlArrival) : [],
           async start() {
             if (!initialized) {
-              throw new Error(startupError ?? "Receiver is starting");
+              throw new Error(startupError ?? "Приёмник запускается");
             }
             await receiver.start();
           },
@@ -230,7 +230,7 @@ async function boot() {
       });
     }
   } catch (e) {
-    startupError = e instanceof Error ? e.message : "Receiver could not start";
+    startupError = e instanceof Error ? e.message : "Не удалось запустить приёмник";
     await receiver.close().catch(() => {});
     if (startupError.includes("in use") && await activateExisting()) {
       await quit();
@@ -250,7 +250,7 @@ bind("downloadUpdate", async () => {
   const executable = Deno.execPath();
   const directory = dirname(executable);
   const name = basename(executable);
-  if (!name.toLowerCase().endsWith(".exe")) throw new Error("Unsupported receiver installation");
+  if (!name.toLowerCase().endsWith(".exe")) throw new Error("Этот вариант установки приёмника не поддерживает обновления");
   for (const file of [".deno-desktop-app", "native.dll"]) await Deno.stat(join(directory, file));
 
   const staging = await Deno.makeTempDir({ dir: directory, prefix: ".folder-camera-update-" });
@@ -307,7 +307,7 @@ bind("downloadUpdate", async () => {
 });
 bind("snapshot", snapshot);
 bind("start", async () => {
-  if (!initialized) throw new Error(startupError ?? "Receiver is starting");
+  if (!initialized) throw new Error(startupError ?? "Приёмник запускается");
   await receiver.start();
   return snapshot();
 });
@@ -321,20 +321,20 @@ bind("pair", async () => {
 });
 bind("revoke", async (id) => {
   if (typeof id !== "string" || !/^[0-9a-f-]{36}$/.test(id)) {
-    throw new Error("Invalid phone");
+    throw new Error("Недопустимый телефон");
   }
   await receiver.revoke(id);
   return snapshot();
 });
 bind("browseFolders", (path) => {
   if (path !== undefined && typeof path !== "string") {
-    throw new Error("Invalid folder");
+    throw new Error("Недопустимая папка");
   }
   return system.browseFolders(path as string | undefined);
 });
 async function setRoot(root: unknown) {
   if (typeof root !== "string" || root.length > 4096) {
-    throw new Error("Invalid capture folder");
+    throw new Error("Недопустимая папка для снимков");
   }
   if (!initialized) {
     values.set("--root", root);
@@ -342,7 +342,7 @@ async function setRoot(root: unknown) {
     startupError = null;
     await boot();
     if (!initialized) {
-      throw new Error(startupError ?? "Receiver could not start");
+      throw new Error(startupError ?? "Не удалось запустить приёмник");
     }
   } else await receiver.setRoot(root);
   return snapshot();
@@ -356,18 +356,18 @@ bind("chooseFolder", async () => {
   return choice.fallback ? { fallback: true } : null;
 });
 bind("openFolder", async () => {
-  if (!initialized) throw new Error("Choose a folder first");
+  if (!initialized) throw new Error("Сначала выберите папку");
   await system.openFolder(receiver.settings.root);
 });
 bind("setAutostart", async (enabled) => {
-  if (typeof enabled !== "boolean") throw new Error("Invalid startup setting");
+  if (typeof enabled !== "boolean") throw new Error("Недопустимая настройка автозапуска");
   await system.setAutostart(enabled);
   login = await system.autostartEnabled();
   return snapshot();
 });
 bind("setCloseToTray", async (enabled) => {
   if (typeof enabled !== "boolean" || !tray || !initialized) {
-    throw new Error("Tray is unavailable");
+    throw new Error("Область уведомлений недоступна");
   }
   preferences.closeToTray = enabled;
   await durableJson(join(state, "desktop-settings.json"), preferences);
@@ -399,10 +399,10 @@ if (!headless) {
   try {
     tray = new native.Tray();
     tray.setIcon(await Deno.readFile(new URL("icon.png", assets)));
-    tray.setTooltip("Folder Camera Receiver");
+    tray.setTooltip("Приёмник Folder Camera");
     tray.setMenu([
-      { item: { label: "Open receiver", id: "open", enabled: true } },
-      { item: { label: "Quit receiver", id: "quit", enabled: true } },
+      { item: { label: "Открыть приёмник", id: "open", enabled: true } },
+      { item: { label: "Выйти из приёмника", id: "quit", enabled: true } },
     ]);
     tray.addEventListener("menuclick", (event) => {
       const id = (event as CustomEvent<{ id: string }>).detail.id;
@@ -439,7 +439,7 @@ if (Deno.args.includes("--exit-with-stdin")) {
 await boot();
 if (!quitting && headless && !initialized) {
   // Nobody can see or fix a startup error without a window.
-  console.error(startupError ?? "Receiver could not start");
+  console.error(startupError ?? "Не удалось запустить приёмник");
   await quit(1);
 }
 if (!quitting) {
@@ -463,7 +463,7 @@ if (!quitting && Deno.args.includes("--smoke")) {
           "value" in value && value.ok === true
         ? value.value
         : value;
-      rendered = actual === "Ready to receive";
+      rendered = actual === "Готов к приёму";
     } catch { /* Wait for the bundled document. */ }
     if (rendered) break;
     await new Promise((resolve) => setTimeout(resolve, 250));

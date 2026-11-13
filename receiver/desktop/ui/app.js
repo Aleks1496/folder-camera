@@ -2,6 +2,28 @@
 const $ = (id) => document.getElementById(id);
 let model, folder, busy = false;
 const api = () => globalThis.bindings ?? globalThis.receiverPreview;
+const receiverErrors = {
+  "Connect to Wi-Fi or Ethernet to receive photos.":
+    "Подключитесь к Wi-Fi или Ethernet, чтобы принимать снимки.",
+  "Connect to a private Wi-Fi or Ethernet network to receive photos.":
+    "Подключитесь к локальной сети Wi-Fi или Ethernet, чтобы принимать снимки.",
+  "Start the receiver before pairing a phone.":
+    "Запустите приёмник, прежде чем подключать телефон.",
+  "No available receiver port": "Нет свободного порта для приёмника.",
+  "State and photo root must be independent directories":
+    "Для снимков и настроек приёмника нужны отдельные папки.",
+  "Receiver state is in use; stop the running receiver before offline management.":
+    "Настройки уже используются. Закройте другой экземпляр приёмника.",
+  "Existing uploads from an older receiver were found. Start once with --root YOUR_EXISTING_PHOTO_FOLDER; it will be remembered automatically.":
+    "Найдены снимки старой версии. Один раз запустите приёмник с параметром --root и путём к прежней папке снимков.",
+};
+function errorText(value, fallback = "Не удалось выполнить действие. Подробности в журнале.") {
+  if (!value) return fallback;
+  if (receiverErrors[value]) return receiverErrors[value];
+  if (/[а-яё]/i.test(value) && !/^[a-z]/i.test(value)) return value;
+  console.error(value);
+  return fallback;
+}
 function message(text) {
   $("message").textContent = text ?? "";
   $("message").hidden = !text;
@@ -15,7 +37,7 @@ async function action(fn) {
     const result = await fn();
     if (result?.status) render(result);
   } catch (error) {
-    message(error?.message ?? String(error));
+    message(errorText(error?.message ?? String(error)));
   } finally {
     busy = false;
     document.body.classList.remove("busy");
@@ -33,82 +55,76 @@ function render(state) {
   $("status-dot").className = "dot " +
     (ready ? "ready" : state.status === "error" ? "error" : "");
   $("status-title").textContent = ready
-    ? "Ready to receive"
+    ? "Готов к приёму"
     : state.status === "starting"
-    ? "Starting receiver…"
+    ? "Приёмник запускается…"
     : state.status === "pausing"
-    ? "Finishing transfers…"
+    ? "Завершаем передачу…"
     : state.status === "error"
-    ? "Connection needs attention"
-    : "Receiver paused";
+    ? "Ошибка подключения"
+    : "Приём приостановлен";
   $("status-subtitle").textContent = state.active
-    ? `${state.active} ${
-      state.active === 1 ? "photo is" : "photos are"
-    } arriving`
+    ? `Получаем снимки: ${state.active}`
     : ready
-    ? "Photos stay organized, automatically"
-    : state.error ?? "Your photos and pairing are kept safe";
-  $("power").textContent = ready ? "Pause" : "Start";
+    ? "Ожидание снимков"
+    : state.error ? errorText(state.error, "Не удалось запустить приёмник. Проверьте сеть и доступ к папке.") : "Снимки и подключения сохранены";
+  $("power").textContent = ready ? "Приостановить" : "Начать приём";
   $("power").disabled = !state.initialized ||
     ["starting", "pausing"].includes(state.status);
   $("root").textContent = state.root ??
-    "Choose your existing capture folder to continue.";
+    "Выберите папку для сохранения снимков.";
   $("folder-name").textContent = state.root
     ? state.root.replace(/[\\/]+$/, "").split(/[\\/]/).pop()
-    : "Choose a folder";
+    : "Выберите папку";
   $("active").textContent = state.active
-    ? `${state.active} ${
-      state.active === 1 ? "transfer" : "transfers"
-    } in progress`
-    : "No transfers in progress";
+    ? `Активных передач: ${state.active}`
+    : "Нет активных передач";
   $("connection").textContent = state.endpoint
-    ? `${state.endpoint} · Encrypted transfer`
-    : "Local storage · Encrypted transfer";
+    ? `${state.endpoint} · Шифрование при передаче`
+    : "Локальное хранение · Шифрование при передаче";
   $("qr").hidden = !state.qr;
   $("qr-empty").hidden = !!state.qr;
   if (state.qr) $("qr").src = "data:image/svg+xml;base64," + btoa(state.qr);
   $("qr-hint").textContent = !ready
-    ? "Start receiving to pair a phone."
+    ? "Запустите приём, чтобы подключить телефон."
     : state.devices?.length
-    ? "Your phone is paired. Add another when needed."
-    : "Create a code to connect your phone.";
+    ? "Телефон подключён. При необходимости можно добавить другой."
+    : "Создайте код для подключения телефона.";
   $("pair").disabled = !ready;
   $("pair").textContent = state.pairing
-    ? "Refresh pairing code"
+    ? "Обновить код подключения"
     : state.devices?.length
-    ? "Pair another phone"
-    : "Create pairing code";
+    ? "Подключить другой телефон"
+    : "Создать код подключения";
   $("expiry").textContent = state.pairing
-    ? `Single-use code · expires in ${
+    ? `Одноразовый код · действует ещё ${
       Math.max(0, Math.ceil((state.pairing.expiresAt - Date.now()) / 60000))
-    } min`
-    : "Your phone and computer must use the same local network.";
-  $("phone-count").textContent = `${state.devices?.length ?? 0} ${
-    state.devices?.length === 1 ? "phone" : "phones"
-  }`;
+    } мин`
+    : "Телефон и компьютер должны быть в одной локальной сети.";
+  $("phone-count").textContent = `Телефонов: ${state.devices?.length ?? 0}`;
   $("devices").replaceChildren();
   if (!state.devices?.length) {
     $("devices").append(
-      text("p", "Your paired phones will appear here.", "muted"),
+      text("p", "Здесь появятся подключённые телефоны.", "muted"),
     );
   }
   for (const device of state.devices ?? []) {
     const row = text("div", "", "device"),
       info = text("div", "", "device-text");
     info.append(
-      text("strong", device.name || "Phone"),
+      text("strong", device.name || "Телефон"),
       text(
         "small",
-        "Paired securely · " + new Date(device.createdAt).toLocaleDateString(),
+        "Подключён · " + new Date(device.createdAt).toLocaleDateString("ru-RU"),
       ),
     );
-    const revoke = text("button", "Disconnect", "quiet");
+    const revoke = text("button", "Отключить", "quiet");
     revoke.onclick = () => {
       if (
         confirm(
-          `Disconnect ${
-            device.name || "this phone"
-          }? Saved photos stay where they are.`,
+          `Отключить ${
+            device.name || "этот телефон"
+          }? Сохранённые снимки останутся на своих местах.`,
         )
       ) action(() => api().revoke(device.id));
     };
@@ -129,7 +145,7 @@ function render(state) {
         info,
         text(
           "time",
-          new Date(photo.receivedAt).toLocaleTimeString([], {
+          new Date(photo.receivedAt).toLocaleTimeString("ru-RU", {
             hour: "2-digit",
             minute: "2-digit",
           }),
@@ -142,7 +158,7 @@ function render(state) {
   $("close-to-tray").checked = !!state.closeToTray;
   $("tray-setting").hidden = !state.tray;
   $("open").disabled = !state.root;
-  if (state.error && !busy) message(state.error);
+  if (state.error && !busy) message(errorText(state.error, "Не удалось запустить приёмник. Проверьте сеть и доступ к папке."));
 }
 async function browse(path) {
   const result = await api().browseFolders(path);
@@ -158,7 +174,7 @@ async function browse(path) {
   }
   if (!result.folders.length) {
     $("folder-list").append(
-      text("p", "No subfolders here. You can use this folder.", "muted"),
+      text("p", "Вложенных папок нет. Можно использовать эту папку.", "muted"),
     );
   }
 }
@@ -197,7 +213,7 @@ async function refresh() {
   try {
     if (api()) render(await api().snapshot());
   } catch (e) {
-    message(e?.message ?? "Receiver connection unavailable");
+    message(errorText(e?.message, "Не удалось связаться с приёмником"));
   }
 }
 refresh();
@@ -215,10 +231,10 @@ async function checkForUpdate() {
     const tag = await api().checkForUpdate();
     $("download-update").hidden = !tag;
     $("update-status").textContent = tag
-      ? `Update available: ${tag}. The receiver will restart to install it.`
-      : "No receiver updates available";
+      ? `Доступно обновление: ${tag}. Для установки приёмник перезапустится.`
+      : "Обновлений нет";
   } catch {
-    $("update-status").textContent = "Could not check for updates";
+    $("update-status").textContent = "Не удалось проверить обновления";
   }
 }
 $("check-update").onclick = checkForUpdate;

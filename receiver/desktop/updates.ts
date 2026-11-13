@@ -49,17 +49,17 @@ export async function availableUpdate(current: string) {
 
 export async function downloadUpdate(update: NonNullable<Awaited<ReturnType<typeof availableUpdate>>>) {
   const response = await fetch(update.url, { signal: AbortSignal.timeout(180_000) });
-  if (!response.ok || !response.body) throw new Error("Could not download receiver update");
+  if (!response.ok || !response.body) throw new Error("Не удалось скачать обновление приёмника");
   const buffer = new Uint8Array(100 * 1024 * 1024);
   let length = 0;
   for await (const chunk of response.body) {
-    if (length + chunk.length > buffer.length) throw new Error("Receiver update is too large");
+    if (length + chunk.length > buffer.length) throw new Error("Файл обновления слишком большой");
     buffer.set(chunk, length);
     length += chunk.length;
   }
   const bytes = buffer.subarray(0, length);
   const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)))
     .map((byte) => byte.toString(16).padStart(2, "0")).join("");
-  if (`sha256:${digest}` !== update.digest) throw new Error("Receiver update checksum mismatch");
+  if (`sha256:${digest}` !== update.digest) throw new Error("Контрольная сумма обновления не совпадает");
   return bytes;
 }

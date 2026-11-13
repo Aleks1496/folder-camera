@@ -21,7 +21,7 @@ export async function chooseFolder(
 ): Promise<{ path?: string; fallback?: boolean }> {
   if (Deno.build.os === "windows") {
     const script =
-      '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = "Choose a folder for Folder Camera photos"; $d.SelectedPath = $env:FOLDER_CAMERA_INITIAL; if ($d.ShowDialog() -eq "OK") { [Console]::Write($d.SelectedPath) }; $d.Dispose()';
+      '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = "Выберите папку для снимков Folder Camera"; $d.SelectedPath = $env:FOLDER_CAMERA_INITIAL; if ($d.ShowDialog() -eq "OK") { [Console]::Write($d.SelectedPath) }; $d.Dispose()';
     try {
       const result = await command("powershell.exe", [
         "-NoProfile",
@@ -35,7 +35,7 @@ export async function chooseFolder(
     } catch { /* Built-in chooser remains available on locked-down hosts. */ }
   } else if (Deno.build.os === "darwin") {
     const script =
-      'on run argv\ntry\nreturn POSIX path of (choose folder with prompt "Choose a folder for Folder Camera photos" default location (POSIX file (item 1 of argv)))\non error number -128\nreturn ""\nend try\nend run';
+      'on run argv\ntry\nreturn POSIX path of (choose folder with prompt "Выберите папку для снимков Folder Camera" default location (POSIX file (item 1 of argv)))\non error number -128\nreturn ""\nend try\nend run';
     try {
       const result = await command("osascript", ["-e", script, root]);
       if (result.success) {
@@ -56,7 +56,7 @@ export async function chooseFolder(
         "--getexistingdirectory",
         root,
         "--title",
-        "Choose a capture folder",
+        "Выберите папку для снимков",
       ]]] as const
     ) {
       try {
@@ -80,7 +80,7 @@ export async function browseFolders(path?: string) {
   if (
     !isAbsolute(current) || current.length > 4096 ||
     [...current].some((c) => c.codePointAt(0)! < 32)
-  ) throw new Error("Enter a complete folder path.");
+  ) throw new Error("Введите полный путь к папке.");
   await noLinks(current);
   const folders = [];
   for await (const entry of Deno.readDir(current)) {
@@ -142,7 +142,7 @@ export async function autostartEnabled(): Promise<boolean> {
 export async function setAutostart(enabled: boolean) {
   const app = launcher();
   if (!isAbsolute(app) || [...app].some((c) => c.codePointAt(0)! < 32)) {
-    throw new Error("Install the receiver before enabling launch at login.");
+    throw new Error("Установите приёмник перед включением автозапуска.");
   }
   if (Deno.build.os === "windows") {
     const path = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run";
@@ -163,7 +163,7 @@ export async function setAutostart(enabled: boolean) {
         : ["delete", path, "/v", nativeName, "/f"],
     );
     if (!output.success && (enabled || await autostartEnabled())) {
-      throw new Error("Windows could not update launch-at-login settings.");
+      throw new Error("Windows не удалось изменить параметры автозапуска.");
     }
     return;
   }
@@ -173,7 +173,7 @@ export async function setAutostart(enabled: boolean) {
   try {
     const info = await Deno.lstat(path);
     if (info.isSymlink || !info.isFile) {
-      throw new Error("Unsafe startup setting");
+      throw new Error("Недопустимая настройка автозапуска");
     }
   } catch (e) {
     if (!(e instanceof Deno.errors.NotFound)) throw e;

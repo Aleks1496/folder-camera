@@ -1,86 +1,86 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Folder Camera Receiver</title>
+    <title>Приёмник Folder Camera</title>
     <link rel="stylesheet" href="app.css">
     <script src="app.js" defer></script>
   </head>
   <body>
     <main>
-      <header><div class="brand"><img src="icon.png" alt=""><div><strong>Folder Camera</strong><span>Desktop receiver</span></div></div><button class="quiet" id="settings-button" aria-label="Settings">Settings</button></header>
+      <header><div class="brand"><img src="icon.png" alt=""><div><strong>Folder Camera</strong><span>Приёмник для ПК</span></div></div><button class="quiet" id="settings-button" aria-label="Настройки">Настройки</button></header>
       <section class="intro">
         <div>
-          <p class="eyebrow">YOUR PHOTOS. YOUR COMPUTER.</p>
-          <h1>A place for<br>every photo.</h1>
+          <p class="eyebrow">ПЕРЕДАЧА СНИМКОВ</p>
+          <h1>Снимки в нужных папках</h1>
           <p
-            class="muted">Keep shooting. Your folders arrive here, just as you made them.</p>
+            class="muted">Снимайте на телефоне. Фотографии появятся на компьютере с той же структурой папок.</p>
         </div>
         <div
-          class="status"><span class="dot" id="status-dot"></span><div><strong id="status-title">Starting receiver…</strong><span id="status-subtitle">Getting your local connection ready</span></div><button class="small" id="power">Pause</button></div>
+          class="status"><span class="dot" id="status-dot"></span><div><strong id="status-title">Приёмник запускается…</strong><span id="status-subtitle">Подготовка подключения к локальной сети</span></div><button class="small" id="power">Приостановить</button></div>
       </section>
       <div id="message" role="status" aria-live="polite" hidden></div>
       <div class="grid">
         <section class="card pairing">
           <div
-            class="section-heading"><div><p class="eyebrow">ONE SIMPLE CONNECTION</p><h2>Pair your phone</h2></div><span class="tag">Private LAN</span></div>
+            class="section-heading"><div><p class="eyebrow">ПОДКЛЮЧЕНИЕ</p><h2>Подключите телефон</h2></div><span class="tag">Локальная сеть</span></div>
           <div class="pair-content">
             <div
-              id="qr-wrap"><img id="qr" alt="Scan this code in Folder Camera to pair your phone" hidden><div id="qr-empty"><span class="phone-icon">▣</span><p id="qr-hint">Your pairing code will appear here.</p></div></div>
+              id="qr-wrap"><img id="qr" alt="Отсканируйте этот код в Folder Camera на телефоне" hidden><div id="qr-empty"><span class="phone-icon">▣</span><p id="qr-hint">Здесь появится код подключения.</p></div></div>
             <div
-              class="pair-instructions"><ol><li><span>1</span>Open Folder Camera on your phone.</li><li><span>2</span>Go to Settings → Pair with a receiver.</li><li><span>3</span>Scan this code and enable PC sync.</li></ol><p class="muted" id="expiry">Your phone and computer must use the same local network.</p><button id="pair" class="secondary">Create pairing code</button></div>
+              class="pair-instructions"><ol><li><span>1</span>Откройте Folder Camera на телефоне.</li><li><span>2</span>Перейдите в «Настройки → Подключить приёмник».</li><li><span>3</span>Отсканируйте код и включите синхронизацию с ПК.</li></ol><p class="muted" id="expiry">Телефон и компьютер должны быть в одной локальной сети.</p><button id="pair" class="secondary">Создать код подключения</button></div>
           </div>
         </section>
         <section class="card destination">
-          <p class="eyebrow">SAVE TO</p>
+          <p class="eyebrow">ПАПКА СОХРАНЕНИЯ</p>
           <div class="folder-art" aria-hidden="true">
             <svg viewBox="0 0 120 92">
               <path d="M9 20h38l10 11h54v51H9z" />
               <path d="M9 35h102" />
             </svg>
           </div>
-          <h2 id="folder-name">Captures</h2>
-          <p class="path" id="root">Choosing your default folder…</p>
+          <h2 id="folder-name">Снимки</h2>
+          <p class="path" id="root">Выбор папки по умолчанию…</p>
           <div
-            class="destination-buttons"><button id="choose">Change folder</button><button class="quiet" id="open">Open folder ↗</button></div>
+            class="destination-buttons"><button id="choose">Сменить папку</button><button class="quiet" id="open">Открыть папку ↗</button></div>
           <p
-            class="fine">New photos go here. Earlier photos stay in their original folders.</p>
+            class="fine">Сюда сохраняются новые снимки. Прежние снимки остаются в своих папках.</p>
         </section>
       </div>
       <section class="card activity">
         <div
-          class="section-heading"><div><p class="eyebrow">IN THEIR PLACE</p><h2>Recent arrivals</h2></div><span class="tag" id="active">No transfers in progress</span></div>
+          class="section-heading"><div><p class="eyebrow">ПОЛУЧЕННЫЕ ФАЙЛЫ</p><h2>Недавние снимки</h2></div><span class="tag" id="active">Нет активных передач</span></div>
         <div id="arrivals">
           <div
-            class="empty"><span class="empty-icon">↓</span><div><strong>Ready for your first photo</strong><p>Take a photo with PC sync enabled. It will appear here when safely saved.</p></div></div>
+            class="empty"><span class="empty-icon">↓</span><div><strong>Ожидаем первый снимок</strong><p>Сделайте снимок с включённой синхронизацией. Он появится здесь после сохранения.</p></div></div>
         </div>
       </section>
       <section class="card phones">
         <div
-          class="section-heading"><h2>Paired phones</h2><span class="muted" id="phone-count">0 phones</span></div>
+          class="section-heading"><h2>Подключённые телефоны</h2><span class="muted" id="phone-count">Телефонов: 0</span></div>
         <div id="devices">
-          <p class="muted">Your paired phones will appear here.</p>
+          <p class="muted">Здесь появятся подключённые телефоны.</p>
         </div>
       </section>
-      <footer><span id="connection">Local storage · Encrypted transfer</span><span>Free &amp; open source · v1.0.0</span></footer>
+      <footer><span id="connection">Локальное хранение · Шифрование при передаче</span><span>Бесплатное приложение с открытым кодом</span></footer>
     </main>
     <dialog id="folder-dialog">
       <form method="dialog"
-        class="dialog-heading"><h2>Choose a capture folder</h2><button class="quiet" aria-label="Close folder chooser">✕</button></form>
+        class="dialog-heading"><h2>Выберите папку для снимков</h2><button class="quiet" aria-label="Закрыть выбор папки">✕</button></form>
       <div
-        class="folder-navigation"><button class="quiet" id="parent">↑ Up</button><input id="browse-path" aria-label="Folder path"><button id="browse-go" class="small">Go</button></div>
+        class="folder-navigation"><button class="quiet" id="parent">↑ На уровень выше</button><input id="browse-path" aria-label="Путь к папке"><button id="browse-go" class="small">Перейти</button></div>
       <p
-        class="fine">Choose a local folder you control. Shortcuts and symbolic links are not accepted.</p>
+        class="fine">Выберите доступную вам локальную папку. Ярлыки и символические ссылки не поддерживаются.</p>
       <div id="folder-list"></div>
       <div
-        class="dialog-actions"><button id="use-folder">Use this folder</button></div>
+        class="dialog-actions"><button id="use-folder">Использовать эту папку</button></div>
     </dialog>
     <dialog
-      id="settings-dialog"><form method="dialog" class="dialog-heading"><h2>Receiver settings</h2><button class="quiet" aria-label="Close settings">✕</button></form><label class="setting"><span><strong>Launch at login</strong><small>Start receiving when you sign in.</small></span><input type="checkbox" id="autostart"></label><label class="setting" id="tray-setting"><span><strong>Keep receiving when closed</strong><small>Use the tray icon or reopen the app to return.</small></span><input type="checkbox" id="close-to-tray"></label><p class="fine">Originals remain on your phone. Pairing codes are single-use and expire after five minutes.</p><p class="fine" id="update-status"></p><button id="check-update" class="quiet">Check for updates</button><button id="licenses" class="quiet">Open-source licenses</button><button id="quit" class="danger">Quit receiver</button></dialog>
+      id="settings-dialog"><form method="dialog" class="dialog-heading"><h2>Настройки приёмника</h2><button class="quiet" aria-label="Закрыть настройки">✕</button></form><label class="setting"><span><strong>Запускать при входе в систему</strong><small>Начинать приём снимков после входа в систему.</small></span><input type="checkbox" id="autostart"></label><label class="setting" id="tray-setting"><span><strong>Продолжать приём после закрытия окна</strong><small>Чтобы вернуться, откройте приложение снова или нажмите значок в области уведомлений.</small></span><input type="checkbox" id="close-to-tray"></label><p class="fine">Оригиналы остаются на телефоне. Код подключения действует пять минут и используется один раз.</p><p class="fine" id="update-status"></p><button id="download-update" hidden>Установить обновление</button><button id="check-update" class="quiet">Проверить обновления</button><button id="licenses" class="quiet">Лицензии открытого ПО</button><button id="quit" class="danger">Выйти из приёмника</button></dialog>
     <dialog id="licenses-dialog">
       <form method="dialog"
-        class="dialog-heading"><h2>Open-source licenses</h2><button class="quiet" aria-label="Close licenses">✕</button></form>
+        class="dialog-heading"><h2>Лицензии открытого ПО</h2><button class="quiet" aria-label="Закрыть лицензии">✕</button></form>
       <pre id="licenses-text"></pre>
     </dialog>
   </body>
