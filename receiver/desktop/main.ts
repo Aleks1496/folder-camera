@@ -457,13 +457,13 @@ if (!quitting && Deno.args.includes("--smoke")) {
   for (let attempt = 0; window && attempt < 40; attempt++) {
     try {
       const value = await window.executeJs(
-        "document.getElementById('status-title')?.textContent",
+        "document.getElementById('status-title')?.textContent === '\\u0413\\u043e\\u0442\\u043e\\u0432 \\u043a \\u043f\\u0440\\u0438\\u0451\\u043c\\u0443' ? 'ready' : 'waiting'",
       );
       const actual = value && typeof value === "object" && "ok" in value &&
           "value" in value && value.ok === true
         ? value.value
         : value;
-      rendered = actual === "Готов к приёму";
+      rendered = actual === "ready";
     } catch { /* Wait for the bundled document. */ }
     if (rendered) break;
     await new Promise((resolve) => setTimeout(resolve, 250));
