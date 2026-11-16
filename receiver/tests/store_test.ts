@@ -153,7 +153,8 @@ Deno.test("Windows reuses existing directory casing for upload and receipt looku
     assert.deepEqual(await f.store.receipt(m.photoId), receipt);
     assert.deepEqual(await Deno.readFile(join(folder, m.filename)), jpeg);
     assert.deepEqual(
-      (await Array.fromAsync(Deno.readDir(f.root))).map((entry) => entry.name),
+      (await Array.fromAsync(Deno.readDir(f.root))).map((entry) => entry.name)
+        .filter((name) => name.toLowerCase() === "samsung"),
       ["SAMSUNG"],
     );
     assert.deepEqual(

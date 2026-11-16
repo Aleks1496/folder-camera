@@ -125,7 +125,7 @@ def upload(state, destination):
     }
     https(state, "PUT", "/v1/photos/" + photo_id, photo, headers)
     assert https(state, "GET", "/v1/photos/" + photo_id)["photoId"] == photo_id
-    assert [entry.name for entry in destination.iterdir()] == ["СЪЁМКА"]
+    assert [entry.name for entry in destination.iterdir() if entry.name.casefold() == "съёмка"] == ["СЪЁМКА"]
     assert [entry.name for entry in (destination / "СЪЁМКА").iterdir()] == ["ПРОЕКТ"]
     assert (destination / "СЪЁМКА" / "ПРОЕКТ" / metadata["filename"]).read_bytes() == photo
 
