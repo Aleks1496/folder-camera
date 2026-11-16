@@ -18,7 +18,8 @@ export interface LanAddress {
   interfaceName: string;
 }
 const virtual =
-  /^(?:lo$|docker|virbr|veth|br-[0-9a-f]+$|tailscale|tun\d|tap\d|wg(?:\d|[-_])|nordlynx|ppp|tunnel|utun|vpn|vmnet|vboxnet|zt[0-9a-z])/i;
+  /^(?:lo$|docker|virbr|veth(?!ernet \()|br-[0-9a-f]+$|tailscale|tun\d|tap\d|wg(?:\d|[-_])|nordlynx|ppp|tunnel|utun|vpn|vmnet|vboxnet|zt[0-9a-z])/i;
+const isolatedHyperV = /^vEthernet \((?:Default Switch\)$|WSL(?:\)|\s))/i;
 export function defaultRoutes(text: string): DefaultRoute[] {
   return text.split(/\r?\n/).slice(1).flatMap((line) => {
     const fields = line.trim().split(/\s+/);
@@ -36,7 +37,8 @@ export function selectLanAddress(
 ): LanAddress {
   const candidates = addresses.filter((item) =>
     !item.internal && item.mac !== "00:00:00:00:00:00" &&
-    !virtual.test(item.name) && localIp(item.address) &&
+    !virtual.test(item.name) && !isolatedHyperV.test(item.name) &&
+    localIp(item.address) &&
     item.address !== "::1" && !item.address.startsWith("127.")
   );
   const rank = (item: InterfaceAddress) => {
@@ -45,7 +47,7 @@ export function selectLanAddress(
       isIP(item.address) === 4 ? 0 : 1,
       route ? 0 : 1,
       route?.metric ?? 0,
-      /^(wl|wlan|wifi)/i.test(item.name)
+      /^(wl|wi-?fi)/i.test(item.name)
         ? 0
         : /^(en|eth)/i.test(item.name)
         ? 1

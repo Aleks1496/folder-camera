@@ -27,6 +27,8 @@ import org.foldercamera.R
 import java.io.File
 import kotlin.math.abs
 
+private const val initialCropInset = 0.05f
+
 @Composable
 internal fun PhotoCropScreen(
     file: File,
@@ -37,10 +39,10 @@ internal fun PhotoCropScreen(
 ) {
     var preview by remember(file) { mutableStateOf<Bitmap?>(null) }
     var previewFailed by remember(file) { mutableStateOf(false) }
-    var left by rememberSaveable(file.path) { mutableFloatStateOf(0f) }
-    var top by rememberSaveable(file.path) { mutableFloatStateOf(0f) }
-    var right by rememberSaveable(file.path) { mutableFloatStateOf(1f) }
-    var bottom by rememberSaveable(file.path) { mutableFloatStateOf(1f) }
+    var left by rememberSaveable(file.path) { mutableFloatStateOf(initialCropInset) }
+    var top by rememberSaveable(file.path) { mutableFloatStateOf(initialCropInset) }
+    var right by rememberSaveable(file.path) { mutableFloatStateOf(1f - initialCropInset) }
+    var bottom by rememberSaveable(file.path) { mutableFloatStateOf(1f - initialCropInset) }
     val crop = Rect(left, top, right, bottom)
     fun setCrop(value: Rect) {
         left = value.left

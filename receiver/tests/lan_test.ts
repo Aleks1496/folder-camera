@@ -20,6 +20,23 @@ Deno.test("automatic LAN selects physical Wi-Fi, skipping Docker, VPNs, loopback
     interfaceName: "wlan0",
   });
 });
+Deno.test("automatic LAN accepts a Hyper-V switch connected to the LAN", () => {
+  const interfaces = [
+    { name: "vEthernet (Default Switch)", address: "172.22.16.1" },
+    { name: "vEthernet (WSL (Hyper-V firewall))", address: "172.28.16.1" },
+    { name: "veth123abc", address: "172.17.0.1" },
+    { name: "vEthernet (sw)", address: "10.4.222.129" },
+  ];
+  assert.deepEqual(selectLanAddress(interfaces), {
+    address: "10.4.222.129",
+    interfaceName: "vEthernet (sw)",
+  });
+  assert.equal(
+    selectLanAddress([...interfaces, { name: "Wi-Fi", address: "10.4.222.130" }])
+      .interfaceName,
+    "Wi-Fi",
+  );
+});
 Deno.test("LAN routing metric selects Ethernet or Wi-Fi; no internet route is required", () => {
   const devices = [{ name: "wlan0", address: "192.168.1.20" }, {
     name: "enp2s0",
