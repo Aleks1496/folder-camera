@@ -124,7 +124,10 @@ def upload(state, destination):
         "X-FolderCamera-Metadata": base64.urlsafe_b64encode(json.dumps(metadata).encode()).decode().rstrip("="),
     }
     https(state, "PUT", "/v1/photos/" + photo_id, photo, headers)
-    assert (destination / metadata["relativePath"] / metadata["filename"]).read_bytes() == photo
+    assert https(state, "GET", "/v1/photos/" + photo_id)["photoId"] == photo_id
+    assert [entry.name for entry in destination.iterdir()] == ["СЪЁМКА"]
+    assert [entry.name for entry in (destination / "СЪЁМКА").iterdir()] == ["ПРОЕКТ"]
+    assert (destination / "СЪЁМКА" / "ПРОЕКТ" / metadata["filename"]).read_bytes() == photo
 
 
 with tempfile.TemporaryDirectory(prefix="folder-camera-offline-") as temporary:
@@ -135,6 +138,7 @@ with tempfile.TemporaryDirectory(prefix="folder-camera-offline-") as temporary:
     state = work / "профиль"
     state.mkdir()
     destination = work / "снимки"
+    (destination / "СЪЁМКА" / "ПРОЕКТ").mkdir(parents=True)
     (state / "identity.json").write_text(json.dumps({
         "version": 1, "receiverId": RECEIVER_ID, "pending": None, "devices": [{
             "id": str(uuid.uuid4()), "name": "Offline smoke phone", "revoked": False,

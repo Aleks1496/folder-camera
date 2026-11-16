@@ -119,17 +119,18 @@ export async function portableDirectory(
           name.normalize("NFC").toLowerCase()
       ) aliases.push(entry);
     }
-    if (
-      aliases.length > 1 ||
-      aliases.length === 1 &&
-        (process.platform === "darwin"
-          ? aliases[0].normalize("NFC") !== name.normalize("NFC")
-          : aliases[0] !== name)
-    ) {
+    const existing = aliases[0];
+    const matches = !existing ||
+      (windows
+        ? existing.toLowerCase() === name.toLowerCase()
+        : process.platform === "darwin"
+        ? existing.normalize("NFC") === name.normalize("NFC")
+        : existing === name);
+    if (aliases.length > 1 || !matches) {
       fail("conflict", 409);
     }
-    const child = join(parent, name);
-    if (!aliases.length && create) {
+    const child = join(parent, existing ?? name);
+    if (!existing && create) {
       await mkdir(child);
       await syncDirectory(parent);
     }

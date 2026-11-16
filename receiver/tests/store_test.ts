@@ -97,7 +97,7 @@ Deno.test("interrupted and corrupt streams never get receipts or completed files
     await f.cleanup();
   }
 });
-Deno.test("symlink roots, symlink descendants, case aliases and file symlinks are rejected", async () => {
+Deno.test("symlink roots, symlink descendants and file symlinks are rejected", async () => {
   const f = await setup();
   try {
     const outside = join(f.temp, "outside");
@@ -108,10 +108,6 @@ Deno.test("symlink roots, symlink descendants, case aliases and file symlinks ar
       "unsafe_root",
     );
     await Deno.mkdir(join(f.root, "Case"));
-    await rejected(
-      () => f.store.put(meta({ relativePath: "case" }), stream()),
-      "conflict",
-    );
     await Deno.writeFile(join(outside, "external.jpg"), jpeg);
     await Deno.symlink(
       join(outside, "external.jpg"),
@@ -137,6 +133,34 @@ Deno.test("symlink roots, symlink descendants, case aliases and file symlinks ar
     await rejected(
       () => new PhotoStore(rootLink, f.state, f.auth.receiverId).init(),
       "unsafe_root",
+    );
+  } finally {
+    await f.cleanup();
+  }
+});
+Deno.test("Windows reuses existing directory casing for upload and receipt lookup", async () => {
+  const f = await setup();
+  try {
+    const folder = join(f.root, "SAMSUNG", "PROJECT");
+    await Deno.mkdir(folder, { recursive: true });
+    const m = meta({ relativePath: "samsung/project" });
+    if (Deno.build.os !== "windows") {
+      await rejected(() => f.store.put(m, stream()), "conflict");
+      return;
+    }
+    const receipt = await f.store.put(m, stream());
+    assert.equal(receipt.relativePath, m.relativePath);
+    assert.deepEqual(await f.store.receipt(m.photoId), receipt);
+    assert.deepEqual(await Deno.readFile(join(folder, m.filename)), jpeg);
+    assert.deepEqual(
+      (await Array.fromAsync(Deno.readDir(f.root))).map((entry) => entry.name),
+      ["SAMSUNG"],
+    );
+    assert.deepEqual(
+      (await Array.fromAsync(Deno.readDir(join(f.root, "SAMSUNG")))).map(
+        (entry) => entry.name,
+      ),
+      ["PROJECT"],
     );
   } finally {
     await f.cleanup();
