@@ -20,6 +20,9 @@ class Configuration(context: Context) {
     var syncEnabled: Boolean
         get() = prefs.getBoolean("sync", false)
         set(value) { prefs.edit().putBoolean("sync", value).commit() }
+    var deleteAfterTransfer: Boolean
+        get() = prefs.getBoolean("deleteAfterTransfer", false)
+        set(value) { prefs.edit().putBoolean("deleteAfterTransfer", value).commit() }
     var lastPath: String
         get() = prefs.getString("lastPath", "") ?: ""
         set(value) { prefs.edit().putString("lastPath", value).apply() }

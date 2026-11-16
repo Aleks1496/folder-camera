@@ -28,6 +28,7 @@ import androidx.core.content.ContextCompat
 import org.foldercamera.R
 import org.foldercamera.data.Capture
 import org.foldercamera.data.Delivery
+import org.foldercamera.data.hasLocalCopy
 import java.util.Locale
 import kotlinx.coroutines.launch
 
@@ -55,10 +56,10 @@ import kotlinx.coroutines.launch
     }
     val session = model.gate.session ?: return
     val currentPhotos = remember(captures, session) { captures.filter { it.baseTreeUri == session.root && it.relativePath == session.path } }
-    val savedCount = currentPhotos.count { it.state == "SAVED" }
+    val savedCount = currentPhotos.count { it.hasLocalCopy }
     val savingCount = currentPhotos.count { it.state in listOf("CAPTURING", "STAGED", "COPYING") }
     val failedCount = currentPhotos.count { it.state == "LOCAL_FAILED" }
-    val latest = currentPhotos.firstOrNull { it.state == "SAVED" }
+    val latest = currentPhotos.firstOrNull { it.hasLocalCopy }
     val zoomState = handle?.camera?.cameraInfo?.zoomState?.value
     val minZoom = zoomState?.minZoomRatio ?: 1f
     val maxZoom = zoomState?.maxZoomRatio ?: 1f

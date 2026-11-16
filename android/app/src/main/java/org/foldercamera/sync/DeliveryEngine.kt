@@ -33,17 +33,22 @@ class DeliveryEngine(private val context: Context) : DeliveryQueue {
         while (allowed()) {
             val receiver = runCatching { app.config.receiver() }.getOrNull() ?: return@withLock
             val d = app.db.dao().claim(receiver.id, System.currentTimeMillis()) ?: return@withLock
-            try {
+            val receipt = try {
                 val c = app.db.dao().capture(d.photoId) ?: throw ProtocolFailure("local_missing", true)
                 if (c.state != "SAVED") throw ProtocolFailure("local_not_saved", true)
                 // Blocking network is deliberately confined to IO; cancellation never starts another request.
-                val receipt = withContext(Dispatchers.IO) { PinnedTransport(context).upload(c, receiver) }
-                app.db.dao().finish(d.photoId, receiver.id, d.claim!!, "RECEIVED", 0, null, receipt)
+                withContext(Dispatchers.IO) { PinnedTransport(context).upload(c, receiver) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 val permanent = e is ProtocolFailure && e.permanent || e is javax.net.ssl.SSLException || e is SecurityException
                 val code = (e as? ProtocolFailure)?.code ?: if (e is javax.net.ssl.SSLException) "certificate_changed" else if (e is SecurityException) "local_permission" else "connection_unavailable"
                 app.db.dao().finish(d.photoId, receiver.id, d.claim!!, if (permanent) "FAILED" else "PENDING", System.currentTimeMillis() + DeliveryPolicy.retryDelay(d.attempts), code, null)
                 if (!permanent) return@withLock
+                continue
+            }
+            if (app.db.dao().finishReceived(d.photoId, receiver.id, d.claim!!, receipt, app.config.deleteAfterTransfer)) {
+                app.store.removeDeliveredPhoto(d.photoId) { app.config.deleteAfterTransfer }
             }
         }
     }

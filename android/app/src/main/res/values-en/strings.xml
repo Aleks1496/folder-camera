@@ -36,6 +36,10 @@
     <string name="sync_heading">Optional LAN upload</string>
     <string name="sync_help">Local capture works without a PC or internet. Turning sync off pauses retained tasks. A transfer already in progress may complete; a committed PC copy is not undone.</string>
     <string name="pc_sync">PC sync</string>
+    <string name="delete_after_transfer">Delete photos from the phone after transfer</string>
+    <string name="delete_after_transfer_help">The phone copy is deleted after the PC confirms it saved the photo.</string>
+    <string name="delete_after_transfer_failed">Some transferred photos could not be deleted from the phone.</string>
+    <string name="delete_after_transfer_retry">Retry deletion</string>
     <string name="allow_lan">Allow local network access</string>
     <string name="paired_receiver">Paired receiver: %1$s</string>
     <string name="endpoint">HTTPS address (LAN IP or .local host)</string>

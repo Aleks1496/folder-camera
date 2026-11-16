@@ -3,7 +3,9 @@ package org.foldercamera.storage
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -11,6 +13,7 @@ import kotlinx.coroutines.withContext
 import org.foldercamera.core.PortablePath
 import org.foldercamera.data.*
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.InputStream
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
@@ -63,7 +66,7 @@ class PhotoStore(private val context: Context, private val dao: CameraDao) : Pho
     override suspend fun persist(id: String) = withContext(Dispatchers.IO) { mutex.withLock {
         activeCaptures.remove(id)
         var c = dao.capture(id) ?: return@withLock
-        if (c.state == "SAVED") { cleanup(c); return@withLock }
+        if (c.hasLocalCopy || c.state == "LOCAL_DELETED") { cleanup(c); return@withLock }
         try {
             val stage = c.stagingPath?.let(::File)
             if (c.sha256.isEmpty()) {
@@ -104,7 +107,40 @@ class PhotoStore(private val context: Context, private val dao: CameraDao) : Pho
         }
     } }
     private suspend fun cleanup(c: Capture) {
-        c.stagingPath?.let { if (File(it).delete() || !File(it).exists()) dao.update(c.copy(state = "SAVED", stagingPath = null, lastLocalError = null)) }
+        c.stagingPath?.let { if (File(it).delete() || !File(it).exists()) dao.clearStaging(c.photoId, it) }
+    }
+
+    suspend fun removeDeliveredPhoto(id: String, enabled: () -> Boolean) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            if (!enabled()) return@withLock
+            val capture = dao.capture(id)?.takeIf { it.state == "DELETE_PENDING" } ?: return@withLock
+            val resolver = context.contentResolver
+            try {
+                val document = Uri.parse(checkNotNull(capture.destinationDocumentUri))
+                val bytes = try {
+                    digest(checkNotNull(resolver.openInputStream(document)))
+                } catch (missing: FileNotFoundException) {
+                    val exists = resolver.query(document, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)
+                        ?.use { it.moveToFirst() }
+                    if (exists != false) throw missing
+                    null
+                }
+                if (bytes != null) {
+                    check(bytes == (capture.byteSize to capture.sha256))
+                    if (!enabled()) return@withLock
+                    check(DocumentsContract.deleteDocument(resolver, document))
+                }
+                dao.markLocalDeleted(id)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                dao.markLocalDeleteFailed(id)
+            }
+        }
+    }
+
+    suspend fun removeDeliveredPhotos(enabled: () -> Boolean) {
+        if (enabled()) dao.pendingLocalDeletes().forEach { removeDeliveredPhoto(it, enabled) }
     }
     private fun validJpeg(file: File): Boolean {
         if (!file.exists() || file.length() < 4) return false
@@ -132,6 +168,6 @@ class PhotoStore(private val context: Context, private val dao: CameraDao) : Pho
     }
     override suspend fun reconcile() {
         dao.incomplete().filter { it.photoId !in activeCaptures }.forEach { persist(it.photoId) }
-        dao.saved().filter { it.stagingPath != null }.forEach { cleanup(it) }
+        dao.stagingCleanup().forEach { cleanup(it) }
     }
 }

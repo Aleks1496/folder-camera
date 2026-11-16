@@ -36,6 +36,10 @@
     <string name="sync_heading">Передача по локальной сети</string>
     <string name="sync_help">Снимать можно без компьютера и интернета. Отключение синхронизации приостанавливает очередь. Уже начатая передача может завершиться, а полученные компьютером файлы сохранятся.</string>
     <string name="pc_sync">Синхронизация с ПК</string>
+    <string name="delete_after_transfer">Удалять фото с телефона после передачи</string>
+    <string name="delete_after_transfer_help">Копия на телефоне удаляется после подтверждения сохранения на ПК.</string>
+    <string name="delete_after_transfer_failed">Не удалось удалить некоторые переданные фото с телефона.</string>
+    <string name="delete_after_transfer_retry">Повторить удаление</string>
     <string name="allow_lan">Разрешить доступ к локальной сети</string>
     <string name="paired_receiver">Подключённый приёмник: %1$s</string>
     <string name="endpoint">Адрес HTTPS (IP в локальной сети или имя .local)</string>

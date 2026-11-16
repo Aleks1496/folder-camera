@@ -63,6 +63,62 @@ class HostRecoveryTest {
         assertEquals(1, db.dao().outstanding("receiver-one"))
         PhotoStore(context, db.dao()).reconcile(); assertEquals(1, db.dao().outstanding("receiver-one"))
     }
+    @Test fun deletionRequiresAnAcceptedReceiptAndAnEnabledSetting() = runBlocking {
+        val receiver = "receiver-one"
+        val dao = db.dao()
+        val capture = staged(receiver = receiver)
+        val store = PhotoStore(context, dao)
+        store.persist(capture.photoId)
+        val document = File(context.filesDir, "test-documents/${capture.relativePath}/${capture.filename}")
+        val claim = dao.claim(receiver, 1000)!!.claim!!
+        assertFalse(dao.finishReceived(capture.photoId, receiver, "stale", "receipt", true))
+        store.removeDeliveredPhotos { true }
+        assertTrue(document.exists())
+        assertFalse(dao.finishReceived(capture.photoId, receiver, claim, "receipt", false))
+        store.removeDeliveredPhotos { true }
+        assertTrue(document.exists())
+        assertEquals("SAVED", dao.capture(capture.photoId)!!.state)
+        assertEquals("RECEIVED", dao.observeDeliveries().first().single().state)
+    }
+
+    @Test fun confirmedLocalDeletionSurvivesRestartAndRetainsDeliveryHistory() = runBlocking {
+        val receiver = "receiver-one"
+        val dao = db.dao()
+        val capture = staged(receiver = receiver)
+        PhotoStore(context, dao).persist(capture.photoId)
+        val document = File(context.filesDir, "test-documents/${capture.relativePath}/${capture.filename}")
+        val claim = dao.claim(receiver, 1000)!!.claim!!
+        assertTrue(dao.finishReceived(capture.photoId, receiver, claim, "receipt", true))
+        val resumed = PhotoStore(context, dao)
+        resumed.reconcile()
+        resumed.removeDeliveredPhotos { false }
+        assertTrue(document.exists())
+        resumed.removeDeliveredPhotos { true }
+        assertFalse(document.exists())
+        assertTrue(document.parentFile!!.isDirectory)
+        assertEquals("LOCAL_DELETED", dao.capture(capture.photoId)!!.state)
+        assertNull(dao.capture(capture.photoId)!!.destinationDocumentUri)
+        assertEquals("receipt", dao.observeDeliveries().first().single().receipt)
+        resumed.reconcile()
+        assertFalse(document.exists())
+    }
+
+    @Test fun failedCleanupLeavesEditedLocalFileAndConfirmedTransferIntact() = runBlocking {
+        val receiver = "receiver-one"
+        val dao = db.dao()
+        val capture = staged(receiver = receiver)
+        val store = PhotoStore(context, dao)
+        store.persist(capture.photoId)
+        val document = File(context.filesDir, "test-documents/${capture.relativePath}/${capture.filename}")
+        val claim = dao.claim(receiver, 1000)!!.claim!!
+        assertTrue(dao.finishReceived(capture.photoId, receiver, claim, "receipt", true))
+        document.appendBytes(byteArrayOf(1))
+        store.removeDeliveredPhotos { true }
+        assertTrue(document.exists())
+        assertEquals("delete_failed", dao.capture(capture.photoId)!!.lastLocalError)
+        assertEquals("RECEIVED", dao.observeDeliveries().first().single().state)
+    }
+
     @Test fun interruptedCaptureDoesNotClaimSavedAndSyncOffCreatesNoDelivery() = runBlocking {
         val store = PhotoStore(context, db.dao()); val interrupted = store.begin(tree, "A/B", null)
         File(interrupted.stagingPath!!).writeBytes(byteArrayOf(-1, -40, 1))

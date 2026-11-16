@@ -21,6 +21,8 @@ class CameraModel(application: Application) : AndroidViewModel(application) {
     var path by mutableStateOf(app.config.lastPath)
     var root by mutableStateOf(app.config.root)
     var sync by mutableStateOf(app.config.syncEnabled)
+    var deleteAfterTransfer by mutableStateOf(app.config.deleteAfterTransfer)
+        private set
     var receiver by mutableStateOf(runCatching { app.config.receiver() }.getOrNull())
     var receiverToReplace by mutableStateOf<Receiver?>(null)
     var error by mutableStateOf<String?>(null)
@@ -73,6 +75,14 @@ class CameraModel(application: Application) : AndroidViewModel(application) {
     }
     fun retryLocal() { app.scope.launch { app.store.reconcile(); app.delivery.kick() } }
     fun toggleSync(value: Boolean) { sync = value; app.config.syncEnabled = value; if (value) app.delivery.kick() else app.delivery.pause() }
+    fun setDeleteAfterTransfer(value: Boolean) {
+        app.config.deleteAfterTransfer = value
+        deleteAfterTransfer = value
+        if (value) retryLocalDeletes()
+    }
+    fun retryLocalDeletes() {
+        app.scope.launch { app.store.removeDeliveredPhotos { app.config.deleteAfterTransfer } }
+    }
     fun retryNetwork() { app.scope.launch { receiver?.let { app.db.dao().retry(it.id) }; app.delivery.kick() } }
     // Complete this short local change even if the calling screen leaves composition.
     suspend fun connectReceiver(next: Receiver, replace: Boolean = false) = withContext(NonCancellable) {
@@ -97,7 +107,7 @@ class CameraModel(application: Application) : AndroidViewModel(application) {
     fun importFolders(paths: Set<String>) {
         val selectedReceiver = receiver ?: return
         app.scope.launch {
-            app.db.dao().saved().filter { it.relativePath in paths }.forEach { app.db.dao().enqueue(Delivery(it.photoId, selectedReceiver.id)) }
+            app.db.dao().saved().filter { it.relativePath in paths }.forEach { app.db.dao().enqueueSaved(it.photoId, selectedReceiver.id) }
             app.delivery.kick()
         }
     }

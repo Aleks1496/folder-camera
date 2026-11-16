@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.foldercamera.R
 import org.foldercamera.core.FolderPaths
 import org.foldercamera.data.Capture
+import org.foldercamera.data.hasLocalCopy
 
 @Composable fun FolderCameraUi(model: CameraModel) {
     val context = LocalContext.current
@@ -87,7 +88,7 @@ import org.foldercamera.data.Capture
 @Composable fun DestinationScreen(model: CameraModel, captures: List<Capture>, selectRoot: () -> Unit) {
     var search by androidx.compose.runtime.saveable.rememberSaveable(model.root) { mutableStateOf("") }
     var parent by androidx.compose.runtime.saveable.rememberSaveable(model.root) { mutableStateOf("") }
-    val saved = remember(captures, model.root) { captures.filter { it.baseTreeUri == model.root && it.state == "SAVED" } }
+    val saved = remember(captures, model.root) { captures.filter { it.baseTreeUri == model.root && it.hasLocalCopy } }
     val known = remember(captures, model.root, model.folderPaths) { FolderPaths.all(model.folderPaths + captures.filter { it.baseTreeUri == model.root && (it.state == "SAVED" || it.creationStarted) }.map { it.relativePath }) }
     val visible = remember(known, parent, search) { FolderPaths.visible(known, parent, search) }
     val childCounts = remember(known) { known.groupingBy { it.substringBeforeLast('/', "") }.eachCount() }

@@ -19,7 +19,11 @@ class FolderCameraApp : Application() {
         super.onCreate()
         db = Room.databaseBuilder(this, CameraDatabase::class.java, "camera.db").build()
         config = Configuration(this); store = PhotoStore(this, db.dao()); delivery = DeliveryEngine(this)
-        scope.launch { store.reconcile(); delivery.kick() }
+        scope.launch {
+            store.reconcile()
+            store.removeDeliveredPhotos { config.deleteAfterTransfer }
+            delivery.kick()
+        }
         getSystemService(ConnectivityManager::class.java).registerNetworkCallback(
             android.net.NetworkRequest.Builder().addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED).build(),
             object : ConnectivityManager.NetworkCallback() { override fun onAvailable(network: Network) { if (config.syncEnabled) scope.launch { db.dao().reconnect(); delivery.kick() } } })

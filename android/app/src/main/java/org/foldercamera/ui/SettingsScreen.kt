@@ -90,6 +90,17 @@ import org.json.JSONObject
             Switch(checked = model.sync, enabled = model.receiver != null, onCheckedChange = { value -> if (!value) model.toggleSync(false) else if (hasLan()) showEnable = true else lan.launch("android.permission.ACCESS_LOCAL_NETWORK") })
             Text(stringResource(R.string.pc_sync))
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Switch(checked = model.deleteAfterTransfer, onCheckedChange = model::setDeleteAfterTransfer)
+            Text(stringResource(R.string.delete_after_transfer))
+        }
+        Text(stringResource(R.string.delete_after_transfer_help), style = MaterialTheme.typography.bodySmall)
+        if (captures.any { it.state == "DELETE_PENDING" && it.lastLocalError == "delete_failed" }) {
+            Text(stringResource(R.string.delete_after_transfer_failed), color = MaterialTheme.colorScheme.error)
+            TextButton(onClick = model::retryLocalDeletes, enabled = model.deleteAfterTransfer) {
+                Text(stringResource(R.string.delete_after_transfer_retry))
+            }
+        }
         if (Build.VERSION.SDK_INT >= 37) TextButton(onClick = { lan.launch("android.permission.ACCESS_LOCAL_NETWORK") }) { Text(stringResource(R.string.allow_lan)) }
         if (model.receiver != null) {
             Text(stringResource(R.string.paired_pc), style = MaterialTheme.typography.titleSmall)

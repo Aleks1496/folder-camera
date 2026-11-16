@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.foldercamera.R
 import org.foldercamera.data.Capture
+import org.foldercamera.data.hasLocalCopy
 
 private data class BrowserFile(val document: DocumentFile, val name: String, val directory: Boolean, val jpeg: Boolean) {
     val uri get() = document.uri.toString()
@@ -69,7 +70,7 @@ private data class BrowserFile(val document: DocumentFile, val name: String, val
         entries = result.getOrDefault(emptyList()); readFailed = result.isFailure
     }
     LaunchedEffect(folder, search) { listState.scrollToItem(0) }
-    val unfinished = remember(captures, selectedRoot) { captures.filter { it.baseTreeUri == selectedRoot && it.state != "SAVED" } }
+    val unfinished = remember(captures, selectedRoot) { captures.filter { it.baseTreeUri == selectedRoot && !it.hasLocalCopy && it.state != "LOCAL_DELETED" } }
     val unfinishedUris = remember(unfinished) { unfinished.mapNotNull { it.destinationDocumentUri }.toSet() }
     val unfinishedNames = remember(unfinished) { unfinished.map { it.filename }.toSet() }
     val visible = remember(entries, search, unfinishedUris, unfinishedNames) { entries.orEmpty().filter { it.uri !in unfinishedUris && it.name !in unfinishedNames && (search.isBlank() || it.name.contains(search, ignoreCase = true)) } }
