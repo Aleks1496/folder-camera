@@ -75,7 +75,7 @@ class CameraModel(application: Application) : AndroidViewModel(application) {
     }
     fun retryLocal() { app.scope.launch { app.store.reconcile(); app.delivery.kick() } }
     fun toggleSync(value: Boolean) { sync = value; app.config.syncEnabled = value; if (value) app.delivery.kick() else app.delivery.pause() }
-    fun setDeleteAfterTransfer(value: Boolean) {
+    fun toggleDeleteAfterTransfer(value: Boolean) {
         app.config.deleteAfterTransfer = value
         deleteAfterTransfer = value
         if (value) retryLocalDeletes()

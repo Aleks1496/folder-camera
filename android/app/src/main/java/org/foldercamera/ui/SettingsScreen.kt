@@ -91,7 +91,7 @@ import org.json.JSONObject
             Text(stringResource(R.string.pc_sync))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            Switch(checked = model.deleteAfterTransfer, onCheckedChange = model::setDeleteAfterTransfer)
+            Switch(checked = model.deleteAfterTransfer, onCheckedChange = model::toggleDeleteAfterTransfer)
             Text(stringResource(R.string.delete_after_transfer))
         }
         Text(stringResource(R.string.delete_after_transfer_help), style = MaterialTheme.typography.bodySmall)
