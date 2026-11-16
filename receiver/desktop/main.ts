@@ -450,6 +450,7 @@ if (!headless) {
       if (id === "quit") void quit();
     });
     tray.addEventListener("click", showWindow);
+    tray.addEventListener("dblclick", showWindow);
   } catch {
     tray?.destroy();
     tray = undefined;
