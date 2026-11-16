@@ -12,6 +12,7 @@ import org.foldercamera.data.*
 import org.foldercamera.storage.digest
 import java.io.IOException
 import java.net.InetAddress
+import java.net.Proxy
 import java.security.MessageDigest
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
@@ -66,6 +67,7 @@ internal fun pinnedClient(address: String, fingerprint: String, socketFactory: S
     val builder = OkHttpClient.Builder()
     if (socketFactory != null) builder.socketFactory(socketFactory)
     return builder.sslSocketFactory(ssl.socketFactory, trust)
+        .proxy(Proxy.NO_PROXY)
         // Exact DER trust permits a changed LAN IP without accepting any other certificate/host.
         .hostnameVerifier { host, _ -> host == url.host }
         .dns(object : Dns { override fun lookup(hostname: String): List<InetAddress> { require(hostname == url.host); return (lookup?.invoke(hostname) ?: Dns.SYSTEM.lookup(hostname)).also { require(it.isNotEmpty() && it.all(::isLocalAddress)) } } })

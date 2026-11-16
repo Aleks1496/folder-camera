@@ -87,14 +87,7 @@ jobs:
       - working-directory: receiver
         run: deno task test
       - name: Build and validate portable Windows x64 EXE
-        env:
-          FOLDER_CAMERA_UPDATE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('folder-camera-build-{0}', github.run_number) }}
-        run: |
-          python scripts/build_desktop.py --target x86_64-pc-windows-msvc --output .work/native
-          if errorlevel 1 exit /b 1
-          python -c "import pathlib, struct; root = pathlib.Path('.work/native'); launchers = list(root.glob('*.exe')); assert len(launchers) == 1 and (root / 'native.dll').is_file(), 'Incomplete Windows bundle'; image = launchers[0].read_bytes(); assert image.startswith(b'MZ'), 'Missing DOS header'; offset, = struct.unpack_from('<I', image, 60); signature, machine = struct.unpack_from('<4sH', image, offset); assert signature == b'PE\x00\x00' and machine == 0x8664, 'Expected a Windows x64 executable'; print('Windows x64 PE header verified')"
-          if errorlevel 1 exit /b 1
-          python -c "import pathlib, shutil; out = pathlib.Path('.work/artifacts'); out.mkdir(exist_ok=True); shutil.make_archive(str(out / 'folder-camera-receiver-windows-x64'), 'zip', '.work/native')"
+        run: python scripts/build_windows_receiver.py .work/artifacts/folder-camera-receiver-windows-x64.zip
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: folder-camera-windows-x64
@@ -118,13 +111,8 @@ jobs:
         with:
           name: folder-camera-windows-x64
           path: .work/gui-artifact
-      - name: Open the built receiver and verify readiness
-        run: |
-          python -m zipfile -e ".work/gui-artifact/folder-camera-receiver-windows-x64.zip" ".work/gui-runtime"
-          if errorlevel 1 exit /b 1
-          set "LAUFEY_RUNTIME_PATH=%CD%\.work\gui-runtime\native.dll"
-          if not exist "%LAUFEY_RUNTIME_PATH%" exit /b 1
-          python scripts/smoke_desktop.py ".work/gui-runtime"
+      - name: Test local reception and native Windows tray
+        run: python scripts/smoke_windows_receiver.py ".work/gui-artifact/folder-camera-receiver-windows-x64.zip"
 
   publish:
     if: github.repository == 'Aleks1496/folder-camera' && github.event_name == 'push'

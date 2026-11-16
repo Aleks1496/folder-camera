@@ -156,6 +156,7 @@
     <string name="app_version">Version %1$s · by sigmasd</string>
     <string name="update_available_short">App update available</string>
     <string name="update_checking">Checking for app updates…</string>
+    <string name="update_manual">Checking GitHub for updates is optional and starts manually.</string>
     <string name="update_available">Update available: %1$s</string>
     <string name="update_none">No app updates available</string>
     <string name="update_check_failed">Could not check for updates</string>

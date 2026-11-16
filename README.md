@@ -2,6 +2,12 @@
 
 Native Kotlin Android folder camera with an optional TypeScript/Deno desktop receiver. The phone is fully usable offline, without pairing, an account, or a PC. Licensed GPL-3.0-or-later. Available free on [F-Droid](https://f-droid.org/en/packages/io.github.sigmasd.foldercamera/). A one-time paid Google Play download is planned. Store submission status is tracked in [release/README.md](release/README.md).
 
+## Приёмник Windows в закрытой сети
+
+Скачайте архив Windows x64 из [Releases](https://github.com/Aleks1496/folder-camera/releases), перенесите его на компьютер и распакуйте целиком. Запустите `FolderCameraReceiver.exe`. Рядом должен лежать `FolderCameraEngine.exe`, который окно запускает автоматически. Windows 10/11 использует встроенный .NET Framework. Устанавливать браузерный компонент, Deno или зависимости на рабочем компьютере не требуется.
+
+Подключите компьютер и телефон к одной локальной сети. Правила доступа в этой сети должны разрешать телефону подключаться к приёмнику по адресу из его окна и порту HTTPS. По умолчанию используется порт 8443. Покажите QR-код в приёмнике и отсканируйте его в Android-приложении. Сопряжение, передача и сохранение снимков, управление телефонами и работа в трее выполняются локально. При обновлении Windows закройте предыдущий приёмник через «Выйти» и замените комплект файлов. Папка снимков, настройки и уже сопряжённые телефоны сохраняются. APK для Android можно перенести и установить с локального носителя.
+
 ## Screenshots
 
 <p>

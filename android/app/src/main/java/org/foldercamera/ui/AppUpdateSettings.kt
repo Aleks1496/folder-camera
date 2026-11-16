@@ -100,11 +100,12 @@ internal fun rememberAppUpdate(): AppUpdateUi {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var candidate by remember { mutableStateOf<ApkUpdate?>(null) }
-    var status by remember { mutableIntStateOf(R.string.update_checking) }
+    var status by remember { mutableIntStateOf(R.string.update_manual) }
     var busy by remember { mutableStateOf(false) }
 
     suspend fun refresh() {
         busy = true
+        status = R.string.update_checking
         candidate = null
         try {
             candidate = withContext(Dispatchers.IO) { checkUpdate() }
@@ -118,7 +119,6 @@ internal fun rememberAppUpdate(): AppUpdateUi {
         }
     }
 
-    LaunchedEffect(Unit) { refresh() }
     return AppUpdateUi(candidate != null) {
         Text(if (status == R.string.update_available) stringResource(status, candidate?.tag.orEmpty()) else stringResource(status))
         Button(enabled = !busy, onClick = { scope.launch { refresh() } }) { Text(stringResource(R.string.update_check)) }

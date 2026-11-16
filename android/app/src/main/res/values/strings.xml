@@ -156,6 +156,7 @@
     <string name="app_version">Версия %1$s · автор sigmasd</string>
     <string name="update_available_short">Доступно обновление</string>
     <string name="update_checking">Проверяем обновления…</string>
+    <string name="update_manual">Проверка обновлений через GitHub запускается вручную.</string>
     <string name="update_available">Доступно обновление: %1$s</string>
     <string name="update_none">Обновлений нет</string>
     <string name="update_check_failed">Не удалось проверить обновления</string>
