@@ -12,7 +12,9 @@ interface NativeWindow extends EventTarget {
   show(): void;
   hide(): void;
   close(): void;
+  isClosed(): boolean;
   focus(): void;
+  navigate(url: string): void;
   executeJs(code: string): Promise<unknown>;
 }
 interface NativeTray extends EventTarget {
@@ -37,7 +39,7 @@ const files: Record<string, string> = {
 const csp =
   "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 // The first server belongs to the GUI. Later Deno.serve listeners retain the LAN address/port.
-const uiServer = Deno.serve({ onListen() {} }, async (request) => {
+const uiServer = Deno.serve({ hostname: "127.0.0.1", onListen() {} }, async (request) => {
   const path = new URL(request.url).pathname;
   if (request.method !== "GET" || !files[path]) {
     return new Response("Not found", { status: 404 });
@@ -58,17 +60,52 @@ const uiServer = Deno.serve({ onListen() {} }, async (request) => {
 });
 // Headless runs the receiver with no window and no tray; other apps use the loopback control API.
 const headless = Deno.args.includes("--headless");
-const window = headless ? undefined : new native.BrowserWindow({
+const windowOptions = {
   title: "Приёмник Folder Camera",
   width: 1100,
   height: 840,
-});
+};
+let window = headless ? undefined : new native.BrowserWindow(windowOptions);
+let backgroundWindow: NativeWindow | undefined;
+const bindings = new Map<string, (...args: unknown[]) => unknown>();
 function bind(name: string, handler: (...args: unknown[]) => unknown) {
+  bindings.set(name, handler);
   window?.bind(name, handler);
 }
 function showWindow() {
+  if (headless || quitting) return;
+  if (!window || window.isClosed()) {
+    window = new native.BrowserWindow(windowOptions);
+    for (const [name, handler] of bindings) window.bind(name, handler);
+    watchWindowClose(window);
+    window.navigate(`http://127.0.0.1:${(uiServer.addr as Deno.NetAddr).port}/`);
+  }
   window?.show();
   window?.focus();
+}
+function keepReceiverInTray(enabled: boolean) {
+  if (enabled && tray && !backgroundWindow) {
+    // Deno 2.9.7 closes the native window even when JS handles the close event.
+    // Keep a hidden window so closing the last visible window cannot end the event loop.
+    backgroundWindow = new native.BrowserWindow({
+      width: 1,
+      height: 1,
+      frameless: true,
+      noActivate: true,
+      opacity: 0,
+    });
+    backgroundWindow.hide();
+  } else if (!enabled && backgroundWindow) {
+    backgroundWindow.close();
+    backgroundWindow = undefined;
+  }
+}
+function watchWindowClose(current: NativeWindow) {
+  current.addEventListener("close", () => {
+    if (quitting || current !== window) return;
+    window = undefined;
+    if (!backgroundWindow || !tray) void quit();
+  });
 }
 const values = new Map<string, string>();
 for (let i = 0; i < Deno.args.length; i++) {
@@ -175,6 +212,7 @@ async function boot() {
     preferences = await readJson<typeof preferences>(
       join(state, "desktop-settings.json"),
     ) ?? preferences;
+    keepReceiverInTray(preferences.closeToTray);
     login = await system.autostartEnabled();
     await receiver.start().catch(() => {});
     if (!activation) {
@@ -369,6 +407,7 @@ bind("setCloseToTray", async (enabled) => {
   if (typeof enabled !== "boolean" || !tray || !initialized) {
     throw new Error("Область уведомлений недоступна");
   }
+  keepReceiverInTray(enabled);
   preferences.closeToTray = enabled;
   await durableJson(join(state, "desktop-settings.json"), preferences);
   return snapshot();
@@ -389,7 +428,8 @@ async function quit(code = 0) {
     clearInterval(networkRefresh);
     await uiServer.shutdown().catch(() => {});
     tray?.destroy();
-    window?.close();
+    if (window && !window.isClosed()) window.close();
+    backgroundWindow?.close();
     if (Deno.build.os === "darwin") Deno.exitCode = code;
     else Deno.exit(code);
   }
@@ -415,12 +455,7 @@ if (!headless) {
     tray = undefined;
   }
 }
-window?.addEventListener("close", (event) => {
-  if (quitting) return;
-  event.preventDefault();
-  if (preferences.closeToTray && tray && !quitting) window?.hide();
-  else void quit();
-});
+if (window) watchWindowClose(window);
 if (Deno.args.includes("--background") && tray) window?.hide();
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   try {
