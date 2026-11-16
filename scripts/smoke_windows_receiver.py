@@ -18,7 +18,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 PORT = 19445
 TITLE = "Приёмник Folder Camera"
-WM_CLOSE = 0x0010
+WM_SYSCOMMAND, SC_CLOSE = 0x0112, 0xF060
 WM_TRAYMOUSEMESSAGE = 0x0800  # .NET Framework NotifyIcon's shell callback.
 WM_LBUTTONUP, WM_LBUTTONDBLCLK, WM_RBUTTONUP = 0x0202, 0x0203, 0x0205
 TOKEN = base64.urlsafe_b64encode(bytes(range(32))).decode().rstrip("=")
@@ -30,6 +30,7 @@ user32.EnumWindows.argtypes = (enumerator, wintypes.LPARAM)
 user32.EnumChildWindows.argtypes = (wintypes.HWND, enumerator, wintypes.LPARAM)
 user32.GetWindowThreadProcessId.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.DWORD))
 user32.GetWindowTextW.argtypes = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
+user32.GetClassNameW.argtypes = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
 user32.IsWindowVisible.argtypes = (wintypes.HWND,)
 user32.PostMessageW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
 user32.SendMessageTimeoutW.argtypes = (
@@ -64,7 +65,14 @@ def windows(pid, parent=None):
 
 
 def receiver_window(pid):
-    return next((hwnd for hwnd, title, visible in windows(pid) if visible and title == TITLE), None)
+    for hwnd, title, visible in windows(pid):
+        if visible and title == TITLE:
+            class_name = ctypes.create_unicode_buffer(256)
+            user32.GetClassNameW(hwnd, class_name, len(class_name))
+            if class_name.value == "#32770":
+                raise RuntimeError("Receiver displayed a Windows error dialog")
+            return hwnd
+    return None
 
 
 def wait_for(process, check, error):
@@ -157,16 +165,16 @@ with tempfile.TemporaryDirectory(prefix="folder-camera-offline-") as temporary:
             # The first visible refresh has to load the persisted tray setting.
             wait_for(gui, lambda: any(text == "Готов к приёму" for _, text, _ in windows(gui.pid, handle)),
                      "Native UI did not render Ready")
-            post(handle, WM_CLOSE)
+            post(handle, WM_SYSCOMMAND, SC_CLOSE)
             wait_for(gui, lambda: receiver_window(gui.pid) is None, "Close did not hide the native window")
             upload(state, destination)
             tray_click(gui.pid, WM_LBUTTONUP)
             handle = wait_for(gui, lambda: receiver_window(gui.pid), "Tray click did not reopen the window")
-            post(handle, WM_CLOSE)
+            post(handle, WM_SYSCOMMAND, SC_CLOSE)
             wait_for(gui, lambda: receiver_window(gui.pid) is None, "Second close did not hide the native window")
             tray_click(gui.pid, WM_LBUTTONDBLCLK)
             handle = wait_for(gui, lambda: receiver_window(gui.pid), "Tray double-click did not reopen the window")
-            post(handle, WM_CLOSE)
+            post(handle, WM_SYSCOMMAND, SC_CLOSE)
             wait_for(gui, lambda: receiver_window(gui.pid) is None, "Third close did not hide the native window")
             tray_click(gui.pid, WM_RBUTTONUP)
             popup = wait_for(gui, lambda: next((hwnd for hwnd, _, shown in windows(gui.pid) if shown), None),

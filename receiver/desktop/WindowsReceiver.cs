@@ -139,7 +139,7 @@ internal sealed class ReceiverForm : Form
     private readonly ListBox phones = new ListBox();
     private readonly ListBox photos = new ListBox();
     private string root, qrData;
-    private bool running, keepReceiving, quitting, receivedStatus;
+    private bool running, keepReceiving, quitting, receivedStatus, resourcesDisposed;
 
     internal ReceiverForm(Engine engine, EventWaitHandle activate)
     {
@@ -393,8 +393,9 @@ internal sealed class ReceiverForm : Form
     }
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && !resourcesDisposed)
         {
+            resourcesDisposed = true;
             refresh.Dispose();
             if (tray != null)
             {
