@@ -28,6 +28,7 @@ import java.io.File
 import kotlin.math.abs
 
 private const val initialCropInset = 0.05f
+private val photoRotations = listOf(0, 90, 180, 270)
 
 @Composable
 internal fun PhotoCropScreen(
@@ -35,20 +36,25 @@ internal fun PhotoCropScreen(
     saving: Boolean,
     saveFailed: Boolean,
     onCancel: () -> Unit,
-    onSave: (Rect) -> Unit,
+    onSave: (Rect, Int) -> Unit,
 ) {
     var preview by remember(file) { mutableStateOf<Bitmap?>(null) }
     var previewFailed by remember(file) { mutableStateOf(false) }
+    var rotation by rememberSaveable(file.path) { mutableIntStateOf(0) }
+    var cropAdjusted by rememberSaveable(file.path) { mutableStateOf(false) }
     var left by rememberSaveable(file.path) { mutableFloatStateOf(initialCropInset) }
     var top by rememberSaveable(file.path) { mutableFloatStateOf(initialCropInset) }
     var right by rememberSaveable(file.path) { mutableFloatStateOf(1f - initialCropInset) }
     var bottom by rememberSaveable(file.path) { mutableFloatStateOf(1f - initialCropInset) }
-    val crop = Rect(left, top, right, bottom)
+    val crop = if (rotation != 0 && !cropAdjusted) FullPhoto
+        else rotateCrop(Rect(left, top, right, bottom), rotation)
     fun setCrop(value: Rect) {
-        left = value.left
-        top = value.top
-        right = value.right
-        bottom = value.bottom
+        val original = rotateCrop(value, -rotation)
+        left = original.left
+        top = original.top
+        right = original.right
+        bottom = original.bottom
+        cropAdjusted = true
     }
 
     LaunchedEffect(file) {
@@ -71,13 +77,27 @@ internal fun PhotoCropScreen(
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 val bitmap = preview
                 when {
-                    bitmap != null -> CropPreview(bitmap, crop, !saving, ::setCrop)
+                    bitmap != null -> {
+                        val rotated = remember(bitmap, rotation) { rotateCropPreview(bitmap, rotation) }
+                        key(rotation) { CropPreview(rotated, crop, !saving, ::setCrop) }
+                    }
                     previewFailed -> Text(stringResource(R.string.crop_open_failed), color = MaterialTheme.colorScheme.error)
                     else -> CircularProgressIndicator()
                 }
             }
             if (saveFailed) {
                 Text(stringResource(R.string.crop_save_failed), color = MaterialTheme.colorScheme.error)
+            }
+            Text(stringResource(R.string.crop_rotation), style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (degrees in photoRotations) {
+                    FilterChip(
+                        selected = rotation == degrees,
+                        onClick = { rotation = degrees },
+                        enabled = preview != null && !saving,
+                        label = { Text(stringResource(R.string.crop_rotation_degrees, degrees)) },
+                    )
+                }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 TextButton(onClick = onCancel, enabled = !saving) {
@@ -87,7 +107,7 @@ internal fun PhotoCropScreen(
                     Text(stringResource(R.string.crop_reset))
                 }
             }
-            Button(onClick = { onSave(crop) }, enabled = preview != null && !saving, modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = { onSave(crop, rotation) }, enabled = preview != null && !saving, modifier = Modifier.fillMaxWidth()) {
                 if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                 else Text(stringResource(R.string.crop_save))
             }

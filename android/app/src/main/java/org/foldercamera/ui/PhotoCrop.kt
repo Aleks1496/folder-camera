@@ -13,7 +13,16 @@ import kotlin.math.floor
 
 internal val FullPhoto = Rect(0f, 0f, 1f, 1f)
 
-private fun orientation(file: File): Matrix {
+internal fun rotateCrop(crop: Rect, degrees: Int): Rect =
+    when (Math.floorMod(degrees, 360)) {
+        0 -> crop
+        90 -> Rect(1f - crop.bottom, crop.left, 1f - crop.top, crop.right)
+        180 -> Rect(1f - crop.right, 1f - crop.bottom, 1f - crop.left, 1f - crop.top)
+        270 -> Rect(crop.top, 1f - crop.right, crop.bottom, 1f - crop.left)
+        else -> error("Expected a multiple of 90 degrees")
+    }
+
+private fun orientation(file: File, degrees: Int = 0): Matrix {
     val orientation = ExifInterface(file.path).getAttributeInt(
         ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL,
     )
@@ -27,16 +36,26 @@ private fun orientation(file: File): Matrix {
             ExifInterface.ORIENTATION_TRANSVERSE -> { setScale(-1f, 1f); postRotate(90f) }
             ExifInterface.ORIENTATION_ROTATE_270 -> setRotate(270f)
         }
+        if (degrees != 0) postRotate(degrees.toFloat())
     }
+}
+
+internal fun rotateCropPreview(bitmap: Bitmap, degrees: Int): Bitmap {
+    if (degrees == 0) return bitmap
+    val transform = Matrix().apply { setRotate(degrees.toFloat()) }
+    return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, transform, false)
 }
 
 private fun Bitmap.orient(transform: Matrix): Bitmap {
     if (transform.isIdentity) return this
-    return try {
+    val result = try {
         Bitmap.createBitmap(this, 0, 0, width, height, transform, false)
-    } finally {
+    } catch (error: RuntimeException) {
         recycle()
+        throw error
     }
+    if (result !== this) recycle()
+    return result
 }
 
 internal fun readCropPreview(file: File): Bitmap {
@@ -51,8 +70,8 @@ internal fun readCropPreview(file: File): Bitmap {
 }
 
 @Suppress("DEPRECATION")
-internal fun writeCroppedPhoto(source: File, output: File, crop: Rect) {
-    val transform = orientation(source)
+internal fun writeEditedPhoto(source: File, output: File, crop: Rect, degrees: Int) {
+    val transform = orientation(source, degrees)
     val decoder = checkNotNull(BitmapRegionDecoder.newInstance(source.path, false))
     val bitmap = try {
         val oriented = RectF(0f, 0f, decoder.width.toFloat(), decoder.height.toFloat())

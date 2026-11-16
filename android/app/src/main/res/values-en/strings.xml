@@ -164,7 +164,9 @@
     <string name="update_allow_install">Allow installs from Folder Camera, then tap Install update again</string>
     <string name="update_install_failed">Could not prepare the update</string>
     <string name="update_install">Install update</string>
-    <string name="crop_title">Crop photo</string>
+    <string name="crop_title">Edit photo</string>
+    <string name="crop_rotation">Rotation</string>
+    <string name="crop_rotation_degrees">%1$d°</string>
     <string name="crop_help">Drag a corner to resize the frame, or drag inside to move it.</string>
     <string name="crop_reset">Reset frame</string>
     <string name="crop_save">Save</string>

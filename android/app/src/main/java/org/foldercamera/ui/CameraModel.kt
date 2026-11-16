@@ -140,7 +140,7 @@ class CameraModel(application: Application) : AndroidViewModel(application) {
         app.scope.launch { current.file.delete() }
     }
 
-    fun saveDraft(crop: Rect) {
+    fun saveDraft(crop: Rect, degrees: Int) {
         val current = draft ?: return
         if (busy) return
         busy = true
@@ -149,9 +149,9 @@ class CameraModel(application: Application) : AndroidViewModel(application) {
             try {
                 withContext(NonCancellable) {
                     val capture = withContext(Dispatchers.IO) {
-                        val edited = if (crop == FullPhoto) null else app.store.newDraft()
+                        val edited = if (crop == FullPhoto && degrees == 0) null else app.store.newDraft()
                         try {
-                            if (edited != null) writeCroppedPhoto(current.file, edited, crop)
+                            if (edited != null) writeEditedPhoto(current.file, edited, crop, degrees)
                             app.store.begin(current.root, current.path, current.receiverId, edited ?: current.file)
                         } finally {
                             edited?.delete()
