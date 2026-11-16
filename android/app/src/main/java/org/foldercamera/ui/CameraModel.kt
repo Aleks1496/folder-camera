@@ -67,8 +67,17 @@ class CameraModel(application: Application) : AndroidViewModel(application) {
             return
         }
         if (busy) return
+        if (screen == "camera") {
+            changeFolder()
+            return
+        }
         gate.session?.let { path = it.path }
         screen = if (gate.session != null) "camera" else "destination"
+    }
+    fun changeFolder() {
+        if (busy) return
+        gate.session?.let { path = it.path }
+        screen = "destination"
     }
     fun selectRoot(uri: String) {
         root = uri; folderPaths = emptyList(); rootName = null; app.config.root = uri; gate.reset(); screen = "destination"; error = null; refreshFolders()

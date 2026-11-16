@@ -1,7 +1,9 @@
 package org.foldercamera
 
+import android.view.KeyEvent
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Rule
 import org.junit.Test
 
@@ -26,7 +28,9 @@ class GateUiTest {
         dismissKeyboard()
         rule.onNodeWithText("Start camera").assertIsDisplayed().performClick()
         rule.onNodeWithText("Projects/Job A/Before").assertExists()
-        rule.onNodeWithContentDescription("Change folder").performClick()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        rule.onNodeWithText("Start camera").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Take photo").assertDoesNotExist()
         rule.onNodeWithText("Relative folder path").performTextClearance()
         rule.onNodeWithText("Relative folder path").performTextInput("New/صور")
         dismissKeyboard()

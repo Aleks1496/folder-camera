@@ -72,7 +72,7 @@ import kotlinx.coroutines.launch
     Surface(Modifier.fillMaxSize(), color = CameraColors.background) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(enabled = !model.busy, onClick = { model.path = session.path; model.screen = "destination" }) { GlyphIcon(Glyph.BACK, description = stringResource(R.string.change_folder)) }
+                IconButton(enabled = !model.busy, onClick = model::changeFolder) { GlyphIcon(Glyph.BACK, description = stringResource(R.string.change_folder)) }
                 Column(Modifier.weight(1f).clickable(enabled = !model.busy) { fullPath = true }.padding(horizontal = 6.dp)) {
                     Text(stringResource(R.string.current_folder), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     Text(session.path, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -128,6 +128,6 @@ import kotlinx.coroutines.launch
             }
         }
     }
-    if (fullPath) AlertDialog(onDismissRequest = { fullPath = false }, title = { Text(stringResource(R.string.current_folder)) }, text = { Text(session.path) }, confirmButton = { TextButton(onClick = { fullPath = false; model.path = session.path; model.screen = "destination" }) { Text(stringResource(R.string.change_folder)) } }, dismissButton = { TextButton(onClick = { fullPath = false }) { Text(stringResource(R.string.close)) } })
+    if (fullPath) AlertDialog(onDismissRequest = { fullPath = false }, title = { Text(stringResource(R.string.current_folder)) }, text = { Text(session.path) }, confirmButton = { TextButton(onClick = { fullPath = false; model.changeFolder() }) { Text(stringResource(R.string.change_folder)) } }, dismissButton = { TextButton(onClick = { fullPath = false }) { Text(stringResource(R.string.close)) } })
 }
 @Composable fun lightLabel(mode: LightMode): String = stringResource(when (mode) { LightMode.OFF -> R.string.light_off; LightMode.AUTO -> R.string.light_auto; LightMode.FLASH -> R.string.light_flash; LightMode.TORCH -> R.string.light_always })
