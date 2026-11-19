@@ -1,0 +1,77 @@
+name: Promote verified Folder Camera build
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths: ['release/stable.json', '.github/workflows/promote-stable.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: folder-camera-stable
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    if: github.repository == 'Aleks1496/folder-camera'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify the selected release and promote its existing files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import tempfile
+
+          record = json.loads(Path('release/stable.json').read_text())
+          tag = record['tag']
+          commit = record['commit']
+          if not re.fullmatch(r'folder-camera-build-[1-9][0-9]*', tag):
+              raise SystemExit('Invalid build tag')
+          if not re.fullmatch(r'[0-9a-f]{40}', commit):
+              raise SystemExit('Invalid build commit')
+          expected = record['assets']
+          names = {'folder-camera-test.apk', 'folder-camera-receiver-windows-x64.zip', 'SHA256SUMS'}
+          if set(expected) != names or any(not re.fullmatch(r'[0-9a-f]{64}', digest) for digest in expected.values()):
+              raise SystemExit('Invalid asset manifest')
+          repository = os.environ['GITHUB_REPOSITORY']
+          endpoint = f'repos/{repository}/releases/tags/{tag}'
+          def api(path):
+              return json.loads(subprocess.check_output(['gh', 'api', path], text=True))
+          release = api(endpoint)
+          if release['draft']:
+              raise SystemExit('The verified build must already be published')
+          resolved = api(f'repos/{repository}/commits/{tag}')['sha']
+          if resolved != commit:
+              raise SystemExit('The release tag points to another commit')
+          actual = {asset['name']: asset.get('digest') for asset in release['assets']}
+          if actual != {name: 'sha256:' + digest for name, digest in expected.items()}:
+              raise SystemExit('Published assets differ from the verified manifest')
+          with tempfile.TemporaryDirectory() as directory:
+              notes = Path(directory) / 'notes.md'
+              notes.write_text(record['notes'], encoding='utf-8')
+              subprocess.run([
+                  'gh', 'release', 'edit', tag, '--repo', repository,
+                  '--prerelease=false', '--latest', '--title', record['title'],
+                  '--notes-file', str(notes),
+              ], check=True)
+          updated = api(endpoint)
+          latest = api(f'repos/{repository}/releases/latest')
+          if updated['prerelease'] or updated['draft'] or latest['id'] != release['id']:
+              raise SystemExit('Stable release promotion was not applied')
+          if {a['name']: a.get('digest') for a in updated['assets']} != actual:
+              raise SystemExit('Asset integrity changed during promotion')
+          print('Verified stable release:', updated['html_url'])
+          PY
