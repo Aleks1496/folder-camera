@@ -1,5 +1,7 @@
 # Verification and acceptance checklist
 
+> **Исторические отчёты исходного проекта.** Файлы [build-results.txt](build-results.txt), [automatic-startup-results.txt](automatic-startup-results.txt) и [ux-update-results.txt](ux-update-results.txt) содержат результаты проверок от 4 октября 2026 года. Результаты сборки 29 относятся к отдельному [прогону GitHub Actions](https://github.com/Aleks1496/folder-camera/actions/runs/43916540638).
+
 ## Swipeable photo viewer and Open with — Android 1.0.4, 2026-11-12
 
 The folder browser lists folders A→Z, then files newest first (capture names start with `yyyyMMdd_HHmmss`). Tapping a photo opens a viewer that pages through the folder's photos, or the current search results, and shows the position. Share, Export and "Open with" act on the photo on screen; "Open with" sends `ACTION_VIEW` with a read grant to the user's viewer app. `UiImprovementsTest.photosAreNewestFirstAndTheViewerSwipesBetweenThem` covers the order, swiping both ways and closing.
